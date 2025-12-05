@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class WorkoutDetailsPage extends StatelessWidget {
   final String title;
@@ -13,6 +16,8 @@ class WorkoutDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     final gradientColors = [const Color(0xFFFF0057), const Color(0xFF009DFF)];
 
     // Updated dummy exercises (5 for each workout)
@@ -64,18 +69,18 @@ class WorkoutDetailsPage extends StatelessWidget {
     final exercises = workouts[title] ?? [];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         leading: IconButton(
-          icon: const Icon(FontAwesomeIcons.chevronLeft, color: Colors.black),
+          icon: Icon(FontAwesomeIcons.chevronLeft, color: theme.appBarTheme.foregroundColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           title,
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: theme.appBarTheme.foregroundColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -116,7 +121,7 @@ class WorkoutDetailsPage extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -124,14 +129,14 @@ class WorkoutDetailsPage extends StatelessWidget {
                       children: [
                         Text(
                           "${exercise['name']} (${exercise['sets']}×${exercise['reps']})",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: isDarkMode ? Colors.white : Colors.black87,
                           ),
                         ),
-                        const Icon(FontAwesomeIcons.dumbbell,
-                            color: Colors.grey, size: 18),
+                        Icon(FontAwesomeIcons.dumbbell,
+                            color: isDarkMode ? Colors.white54 : Colors.grey, size: 18),
                       ],
                     ),
                   ),

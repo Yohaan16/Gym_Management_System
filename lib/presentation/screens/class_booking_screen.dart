@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class ClassBookingScreen extends StatefulWidget {
   const ClassBookingScreen({super.key});
@@ -78,10 +81,12 @@ Widget _buildDotIndicator(bool isActive) => AnimatedContainer(
 
 @override
 Widget build(BuildContext context) {
-final size = MediaQuery.of(context).size;
+  final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+  final theme = Theme.of(context);
+  final size = MediaQuery.of(context).size;
 
-return Scaffold(
-  backgroundColor: Colors.black,
+  return Scaffold(
+    backgroundColor: theme.scaffoldBackgroundColor,
   body: Column(
     children: [
       // ---------- HEADER WITH PAGEVIEW ----------
@@ -160,8 +165,8 @@ return Scaffold(
       Expanded(
         child: Container(
           width: double.infinity,
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: isDarkMode ? AppColors.darkSurface : Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
           child: Column(
@@ -174,12 +179,12 @@ return Scaffold(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       "December Schedule",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color: Colors.black87,
+                        color: isDarkMode ? Colors.white : Colors.black87,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -192,9 +197,9 @@ return Scaffold(
                           lastDate: DateTime(2030),
                         );
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         FontAwesomeIcons.calendarDays,
-                        color: Colors.black54,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
                         size: 18,
                       ),
                     ),
@@ -220,7 +225,7 @@ return Scaffold(
                         width: 70,
                         decoration: BoxDecoration(
                           gradient: isSelected ? _mainGradient : null,
-                          color: isSelected ? null : Colors.grey[100],
+                          color: isSelected ? null : (isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[100]),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: isSelected
                               ? [
@@ -240,7 +245,7 @@ return Scaffold(
                               style: TextStyle(
                                 color: isSelected
                                     ? Colors.white
-                                    : Colors.black,
+                                    : (isDarkMode ? Colors.white : Colors.black),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                               ),
@@ -250,7 +255,7 @@ return Scaffold(
                               style: TextStyle(
                                 color: isSelected
                                     ? Colors.white70
-                                    : Colors.black54,
+                                    : (isDarkMode ? Colors.white54 : Colors.black54),
                               ),
                             ),
                           ],
@@ -263,12 +268,12 @@ return Scaffold(
 
               const SizedBox(height: 25),
 
-              const Text(
+              Text(
                 "Available Time",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: Colors.black87,
+                  color: isDarkMode ? Colors.white : Colors.black87,
                 ),
               ),
 
@@ -297,7 +302,7 @@ return Scaffold(
                           decoration: BoxDecoration(
                             gradient:
                                 isSelected ? _mainGradient : null,
-                            color: isSelected ? null : Colors.grey[100],
+                            color: isSelected ? null : (isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[100]),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: isSelected
                                 ? [
@@ -315,7 +320,7 @@ return Scaffold(
                             style: TextStyle(
                               color: isSelected
                                   ? Colors.white
-                                  : Colors.black87,
+                                  : (isDarkMode ? Colors.white : Colors.black87),
                               fontWeight: isSelected
                                   ? FontWeight.bold
                                   : FontWeight.w500,

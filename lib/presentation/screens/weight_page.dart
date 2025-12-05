@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class WeightPage extends StatefulWidget {
   const WeightPage({super.key});
@@ -27,8 +30,10 @@ class _WeightPageState extends State<WeightPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Stack(
@@ -49,7 +54,7 @@ class _WeightPageState extends State<WeightPage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
@@ -83,8 +88,8 @@ class _WeightPageState extends State<WeightPage> {
                         borderData: FlBorderData(
                           show: true,
                           border: Border(
-                            left: BorderSide(color: Colors.grey.shade300, width: 1),
-                            bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                            left: BorderSide(color: isDarkMode ? Colors.white24 : Colors.grey.shade300, width: 1),
+                            bottom: BorderSide(color: isDarkMode ? Colors.white24 : Colors.grey.shade300, width: 1),
                           ),
                         ),
                         titlesData: FlTitlesData(
@@ -96,7 +101,7 @@ class _WeightPageState extends State<WeightPage> {
                               reservedSize: 28,
                               getTitlesWidget: (value, _) => Text(
                                 value.toInt().toString(),
-                                style: const TextStyle(fontSize: 10),
+                                style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white54 : Colors.black54),
                               ),
                             ),
                           ),
@@ -108,7 +113,7 @@ class _WeightPageState extends State<WeightPage> {
                                 int day = value.toInt();
                                 if (day >= 1 && day <= 6) {
                                   return Text("Day $day",
-                                      style: const TextStyle(fontSize: 10));
+                                      style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white54 : Colors.black54));
                                 }
                                 return const SizedBox.shrink();
                               },
@@ -158,16 +163,18 @@ class _WeightPageState extends State<WeightPage> {
                     ),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: TextField(
                         controller: _weightController,
                         keyboardType: TextInputType.number,
+                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
                         decoration: InputDecoration(
-                          hintText: "Enter today’s weight (kg)",
+                          hintText: "Enter today's weight (kg)",
+                          hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black54),
                           suffixIcon: IconButton(
-                            icon: const Icon(Icons.add, color: Colors.grey),
+                            icon: Icon(Icons.add, color: isDarkMode ? Colors.white54 : Colors.grey),
                             onPressed: () {
                               if (_weightController.text.isNotEmpty) {
                                 print("Added weight: ${_weightController.text}");

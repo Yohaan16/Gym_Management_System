@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class SendReviewScreen extends StatefulWidget {
   const SendReviewScreen({super.key});
@@ -25,22 +28,24 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "Send Review",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: theme.appBarTheme.foregroundColor,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
       ),
       body: Padding(
@@ -48,11 +53,11 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Select Topic",
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: isDarkMode ? Colors.white : Colors.black87,
                 fontSize: 16,
               ),
             ),
@@ -66,14 +71,14 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _selectedTopic,
-                    hint: const Text("Choose a topic"),
-                    icon: const Icon(Icons.arrow_drop_down),
+                    hint: Text("Choose a topic", style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54)),
+                    icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white70 : Colors.black54),
                     isExpanded: true,
                     onChanged: (value) {
                       setState(() => _selectedTopic = value);
@@ -81,7 +86,7 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
                     items: _topics
                         .map((topic) => DropdownMenuItem(
                               value: topic,
-                              child: Text(topic),
+                              child: Text(topic, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87)),
                             ))
                         .toList(),
                   ),
@@ -89,11 +94,11 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
               ),
             ),
             const SizedBox(height: 25),
-            const Text(
+            Text(
               "Your Review",
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: isDarkMode ? Colors.white : Colors.black87,
                 fontSize: 16,
               ),
             ),
@@ -106,14 +111,16 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
               padding: const EdgeInsets.all(1.5),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TextField(
                   controller: _reviewController,
                   maxLines: 6,
+                  style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     hintText: "Write your review here...",
+                    hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black54),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(14),
                   ),

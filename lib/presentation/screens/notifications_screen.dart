@@ -1,6 +1,9 @@
 // notifications_screen.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 const Color _blue = Color(0xFF3A86FF);
 const Color _purple = Color(0xFF8338EC);
@@ -46,28 +49,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
     final gradientColors = [_purple, _blue];
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        // ✅ Chevron placed at far left using leading property
         leading: IconButton(
-          icon: const Icon(FontAwesomeIcons.chevronLeft, color: Colors.black54, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Notifications',
+        title: Text(
+          "Notifications",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: theme.appBarTheme.foregroundColor,
           ),
         ),
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        elevation: 0,
+        centerTitle: true,
       ),
-      backgroundColor: Colors.white,
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: notifications.length,
@@ -87,7 +90,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               // small visual animation for size change still comes from AnimatedCrossFade below
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDarkMode ? AppColors.darkSurface : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: GradientBoxBorder(
                   gradient: LinearGradient(colors: gradientColors),
@@ -96,7 +99,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.06),
                     blurRadius: 8,
                     offset: const Offset(2, 3),
                   ),
@@ -112,9 +115,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       AnimatedRotation(
                         duration: const Duration(milliseconds: 220),
                         turns: expanded ? 0.25 : 0.0, // 0.25 * 360 = 90deg
-                        child: const Icon(
+                        child: Icon(
                           FontAwesomeIcons.chevronRight,
-                          color: Colors.black54,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
                           size: 16,
                         ),
                       ),
@@ -122,17 +125,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Expanded(
                         child: Text(
                           notification['title']!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: isDarkMode ? Colors.white : Colors.black87,
                           ),
                         ),
                       ),
                       Text(
                         notification['time']!,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                           fontSize: 13,
                         ),
                       ),
@@ -146,8 +149,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       padding: const EdgeInsets.only(top: 10, left: 26, right: 4),
                       child: Text(
                         notification['message']!,
-                        style: const TextStyle(
-                          color: Colors.black87,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
                           fontSize: 15,
                           height: 1.4,
                         ),

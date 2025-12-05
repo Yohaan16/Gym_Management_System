@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 import 'weight_page.dart';
 import 'calories_page.dart';
 import 'total_workouts_page.dart';
@@ -20,6 +23,8 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
     final pages = [
       const WeightPage(),
       const CaloriesPage(),
@@ -27,7 +32,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -38,9 +43,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                 children: [
                   // Back arrow
                   IconButton(
-                    icon: const FaIcon(
+                    icon: FaIcon(
                       FontAwesomeIcons.chevronLeft,
-                      color: Colors.black87,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
                     onPressed: () {
                       Navigator.pop(context);
@@ -52,10 +57,10 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                     child: Text(
                       "Progress Tracking",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: isDarkMode ? Colors.white : Colors.black87,
                       ),
                     ),
                   ),
@@ -82,9 +87,9 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                           gradient: isSelected
                               ? LinearGradient(colors: [pink, blue])
                               : null,
-                          color: isSelected ? null : Colors.grey.shade100,
+                          color: isSelected ? null : (isDarkMode ? AppColors.darkSurfaceLight : Colors.grey.shade100),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: isDarkMode ? AppColors.darkSurfaceLighter : Colors.grey.shade300),
                         ),
                         alignment: Alignment.center,
                         child: Text(

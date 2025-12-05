@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class TotalWorkoutsPage extends StatefulWidget {
   const TotalWorkoutsPage({super.key});
@@ -24,9 +27,11 @@ class _TotalWorkoutsPageState extends State<TotalWorkoutsPage> {
   @override
   Widget build(BuildContext context) {
     final gradientColors = [_pink, _blue];
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Stack(
           children: [
@@ -45,7 +50,7 @@ class _TotalWorkoutsPageState extends State<TotalWorkoutsPage> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
@@ -89,7 +94,7 @@ class _TotalWorkoutsPageState extends State<TotalWorkoutsPage> {
               right: 0,
               child: Container(
                 padding: const EdgeInsets.all(16),
-                color: Colors.white,
+                color: theme.scaffoldBackgroundColor,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: gradientColors),
@@ -126,6 +131,7 @@ class _TotalWorkoutsPageState extends State<TotalWorkoutsPage> {
   Widget _buildWorkoutBar(
       String label, int current, int total, List<Color> gradient) {
     final progress = (current / total).clamp(0.0, 1.0);
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,14 +142,15 @@ class _TotalWorkoutsPageState extends State<TotalWorkoutsPage> {
           children: [
             Text(
               "$label  ($current/$total)",
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
+                color: isDarkMode ? Colors.white : Colors.black87,
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.add_circle_outline,
-                  color: Colors.grey, size: 22),
+              icon: Icon(Icons.add_circle_outline,
+                  color: isDarkMode ? Colors.white54 : Colors.grey, size: 22),
               onPressed: () {
                 setState(() {
                   if (_workouts[label]![0] < _workouts[label]![1]) {
@@ -165,7 +172,7 @@ class _TotalWorkoutsPageState extends State<TotalWorkoutsPage> {
                   height: 18,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[200],
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),

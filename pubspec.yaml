@@ -38,6 +38,8 @@ dependencies:
 
   font_awesome_flutter: ^10.7.0
   fl_chart: ^1.1.1
+  provider: ^6.0.0
+  shared_preferences: ^2.2.2
 
 
 dev_dependencies:

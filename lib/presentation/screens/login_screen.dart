@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,10 +28,19 @@ class _LoginScreenState extends State<LoginScreen>
   final _pink = const Color(0xFFff0057);
   final _blue = const Color(0xFF009dff);
 
+  late bool _isDarkMode;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _isDarkMode = false;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
   }
 
   @override
@@ -54,12 +66,16 @@ class _LoginScreenState extends State<LoginScreen>
   // ---------- MAIN UI ----------
   @override
   Widget build(BuildContext context) {
+    _isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     final size = MediaQuery.of(context).size;
+    final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Container(
         width: double.infinity,
         height: double.infinity,
+        color: theme.scaffoldBackgroundColor,
         child: Column(
           children: [
             _buildHeader(size),
@@ -94,8 +110,8 @@ class _LoginScreenState extends State<LoginScreen>
           right: 0,
           child: Container(
             height: 170,
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: _isDarkMode ? AppColors.darkBg : const Color.fromARGB(255, 255, 255, 255),
               borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
             ),
           ),
@@ -108,6 +124,8 @@ class _LoginScreenState extends State<LoginScreen>
             'assets/images/GMS_logo.png',
             height: 170,
             fit: BoxFit.contain,
+            color: _isDarkMode ? Colors.white : Colors.black87,
+            colorBlendMode: BlendMode.srcIn,
           ),
         ),
       ],
@@ -116,15 +134,16 @@ class _LoginScreenState extends State<LoginScreen>
 
   // ---------- TABS ----------
   Widget _buildTabs() {
+    final textColor = _isDarkMode ? Colors.white : Colors.black;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _tabButton("Sign In", 0, _pink),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text("|", style: TextStyle(color: Colors.black38)),
+            child: Text("|", style: TextStyle(color: textColor)),
           ),
           _tabButton("Sign Up", 1, _blue),
         ],
@@ -140,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen>
         text,
         style: TextStyle(
           fontSize: 16,
-          color: isActive ? color : Colors.black54,
+          color: isActive ? color : (_isDarkMode ? Colors.white : Colors.black),
           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -223,12 +242,14 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _inputField(TextEditingController controller, String label, IconData icon) {
     return TextField(
       controller: controller,
+      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
+        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
+        prefixIcon: Icon(icon, color: _isDarkMode ? Colors.white54 : Colors.black54),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: _isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[100],
       ),
     );
   }
@@ -237,12 +258,14 @@ class _LoginScreenState extends State<LoginScreen>
     return TextField(
       controller: _dobController,
       readOnly: true,
+      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         labelText: "Date of Birth",
-        prefixIcon: const Icon(Icons.calendar_today),
+        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
+        prefixIcon: Icon(Icons.calendar_today, color: _isDarkMode ? Colors.white54 : Colors.black54),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: _isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[100],
       ),
       onTap: () async {
         final picked = await showDatePicker(
@@ -265,16 +288,19 @@ class _LoginScreenState extends State<LoginScreen>
     return TextField(
       controller: controller,
       obscureText: obscurePassword,
+      style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: const Icon(Icons.lock_outline),
+        labelStyle: TextStyle(color: _isDarkMode ? Colors.white70 : Colors.black54),
+        prefixIcon: Icon(Icons.lock_outline, color: _isDarkMode ? Colors.white54 : Colors.black54),
         suffixIcon: IconButton(
-          icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
+          icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility, 
+            color: _isDarkMode ? Colors.white54 : Colors.black54),
           onPressed: () => setState(() => obscurePassword = !obscurePassword),
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: _isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[100],
       ),
     );
   }
@@ -291,7 +317,7 @@ class _LoginScreenState extends State<LoginScreen>
               activeColor: _pink,
               onChanged: (val) => setState(() => rememberMe = val!),
             ),
-            const Text("Remember me"),
+            Text("Remember me", style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black87)),
           ],
         ),
         TextButton(

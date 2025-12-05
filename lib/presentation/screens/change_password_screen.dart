@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -23,23 +26,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "Change Password",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: theme.appBarTheme.foregroundColor,
           ),
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -54,6 +59,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               onToggle: () {
                 setState(() => _obscureCurrent = !_obscureCurrent);
               },
+              isDarkMode: isDarkMode,
             ),
             const SizedBox(height: 20),
             _buildPasswordField(
@@ -63,6 +69,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               onToggle: () {
                 setState(() => _obscureNew = !_obscureNew);
               },
+              isDarkMode: isDarkMode,
             ),
             const SizedBox(height: 20),
             _buildPasswordField(
@@ -72,6 +79,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               onToggle: () {
                 setState(() => _obscureConfirm = !_obscureConfirm);
               },
+              isDarkMode: isDarkMode,
             ),
             const SizedBox(height: 40),
             SizedBox(
@@ -117,22 +125,26 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     required TextEditingController controller,
     required bool obscureText,
     required VoidCallback onToggle,
+    required bool isDarkMode,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style:
-              const TextStyle(fontWeight: FontWeight.w500, color: Colors.black87),
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: isDarkMode ? Colors.white : Colors.black87,
+          ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           obscureText: obscureText,
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.grey[100],
+            fillColor: isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[100],
             contentPadding:
                 const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
             border: OutlineInputBorder(
@@ -142,7 +154,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             suffixIcon: IconButton(
               icon: Icon(
                 obscureText ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey[600],
+                color: isDarkMode ? Colors.white70 : Colors.grey[600],
               ),
               onPressed: onToggle,
             ),

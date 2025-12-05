@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:gms_mobile/presentation/screens/notifications_screen.dart';
 import 'package:gms_mobile/presentation/widgets/calories_widget.dart';
+import 'package:gms_mobile/presentation/widgets/stat_box.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 // ✅ Import your other screens
 import 'profile_screen.dart';
@@ -59,10 +63,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     final gradientColors = [const Color(0xFFFF0057), const Color(0xFF009DFF)];
+    final theme = Theme.of(context);
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final iconColor = isDarkMode ? Colors.white : Colors.black87;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 20),
@@ -87,19 +95,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                             );
                           },
-                          child: const CircleAvatar(
+                          child: CircleAvatar(
                             radius: 22,
-                            backgroundColor: Colors.grey,
+                            backgroundColor: isDarkMode ? AppColors.darkSurfaceLight : Colors.grey,
                             child: Icon(Icons.person, color: Colors.white),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
+                        Text(
                           "Welcome Yohaan",
                           style: TextStyle(
                             fontSize: 25,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                            color: textColor,
                           ),
                         ),
                       ],
@@ -113,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                             );
                           },
-                      child: const Icon(FontAwesomeIcons.bell, color: Colors.black87),
+                      child: Icon(FontAwesomeIcons.bell, color: iconColor),
                     ),
                   ],
                 ),
@@ -201,12 +209,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       "Progress Tracking",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: textColor,
                       ),
                     ),
 
@@ -220,8 +228,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                         );
                       },
-                      child: const Icon(FontAwesomeIcons.chevronRight,
-                          color: Colors.black54, size: 16),
+                      child: Icon(FontAwesomeIcons.chevronRight,
+                          color: isDarkMode ? Colors.grey : Colors.black54, size: 16),
                     ),
                   ],
                 ),
@@ -255,14 +263,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               const SizedBox(height: 30),
 
               // --- Workout Plans ---
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
                   "Workout Plans",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                   ),
                 ),
               ),

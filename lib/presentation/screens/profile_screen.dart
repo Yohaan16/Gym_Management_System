@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
+import 'package:gms_mobile/core/constants/app_constants.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'membership_screen.dart';
@@ -13,10 +17,7 @@ State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-final Color _pink = const Color(0xFFFF0057);
-final Color _blue = const Color(0xFF009DFF);
-
-bool _isEditing = false;
+  bool _isEditing = false;
 
 final TextEditingController _nameController =
 TextEditingController(text: "Yohaan");
@@ -31,45 +32,49 @@ TextEditingController(text: "yohaan@gmail.com");
 
 @override
 Widget build(BuildContext context) {
-return Scaffold(
-backgroundColor: Colors.white,
-appBar: AppBar(
-leading: IconButton(
-icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
-onPressed: () => Navigator.pop(context),
-),
-title: const Text(
-"Profile",
-style: TextStyle(
-fontWeight: FontWeight.bold,
-color: Colors.black87,
-),
-),
-backgroundColor: Colors.white,
-elevation: 0,
-centerTitle: true,
-),
+  final theme = Theme.of(context);
+  final themeProvider = Provider.of<ThemeProvider>(context);
+  final isDarkMode = themeProvider.isDarkMode;
+  
+  return Scaffold(
+    backgroundColor: theme.scaffoldBackgroundColor,
+    appBar: AppBar(
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Text(
+        "Profile",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: theme.appBarTheme.foregroundColor,
+        ),
+      ),
+      backgroundColor: theme.appBarTheme.backgroundColor,
+      elevation: 0,
+      centerTitle: true,
+    ),
 body: SingleChildScrollView(
 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
 child: Column(
 children: [
 const CircleAvatar(
 radius: 45,
-backgroundImage: AssetImage("assets/images/gym_header.jpeg"),
+backgroundImage: AssetImage(AppConstants.imgGymHeader),
 ),
 const SizedBox(height: 10),
 Text(
 _nameController.text,
-style: const TextStyle(
+style: TextStyle(
 fontSize: 18,
 fontWeight: FontWeight.bold,
-color: Colors.black,
+color: isDarkMode ? Colors.white : AppColors.textPrimary,
 ),
 ),
 const SizedBox(height: 4),
 Text(
 _emailController.text,
-style: TextStyle(color: Colors.grey[600]),
+style: TextStyle(color: isDarkMode ? Colors.white70 : AppColors.textLight),
 ),
 const SizedBox(height: 20),
 
@@ -80,10 +85,10 @@ const SizedBox(height: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: GradientBoxBorder(
-              gradient: LinearGradient(colors: [_pink, _blue]),
+              gradient: LinearGradient(colors: AppColors.gradientPinkPurple),
               width: 2,
             ),
-            color: Colors.white,
+            color: isDarkMode ? AppColors.darkSurface : AppColors.bgWhite,
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.withOpacity(0.1),
@@ -123,7 +128,7 @@ const SizedBox(height: 20),
                   },
                   child: Ink(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [_pink, _blue]),
+                      gradient: LinearGradient(colors: AppColors.gradientPinkPurple),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Container(
@@ -146,11 +151,11 @@ const SizedBox(height: 20),
         const SizedBox(height: 30),
 
         // ---------- OPTIONS ----------
-        _buildOptionItem(context, "Membership", Icons.card_membership, const MembershipScreen()),
-        _buildOptionItem(context, "Settings", Icons.settings, const SettingsScreen()),
-        _buildOptionItem(context, "Change Password", Icons.password, const ChangePasswordScreen()),
-        _buildOptionItem(context, "Send Review", Icons.reviews_outlined, const SendReviewScreen()),
-        _buildOptionItem(context, "Log Out", Icons.logout, const LoginScreen()),
+        _buildOptionItem(context, "Membership", Icons.card_membership, const MembershipScreen(), isDarkMode),
+        _buildOptionItem(context, "Settings", Icons.settings, const SettingsScreen(), isDarkMode),
+        _buildOptionItem(context, "Change Password", Icons.password, const ChangePasswordScreen(), isDarkMode),
+        _buildOptionItem(context, "Send Review", Icons.reviews_outlined, const SendReviewScreen(), isDarkMode),
+        _buildOptionItem(context, "Log Out", Icons.logout, const LoginScreen(), isDarkMode),
 
       ],
     ),
@@ -166,15 +171,16 @@ child: Column(
 crossAxisAlignment: CrossAxisAlignment.start,
 children: [
 Text(label,
-style: const TextStyle(
-fontWeight: FontWeight.w500, color: Colors.black87)),
+style: TextStyle(
+fontWeight: FontWeight.w500, 
+color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87)),
 const SizedBox(height: 6),
 TextField(
 controller: controller,
 enabled: _isEditing,
 decoration: InputDecoration(
 filled: true,
-fillColor: Colors.grey[100],
+fillColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceLight : Colors.grey[100],
 contentPadding:
 const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
 border: OutlineInputBorder(
@@ -206,7 +212,7 @@ void _navigateWithSlide(BuildContext context, Widget page) {
 }
 
 Widget _buildOptionItem(
-    BuildContext context, String title, IconData icon, Widget page) {
+    BuildContext context, String title, IconData icon, Widget page, bool isDarkMode) {
   return GestureDetector(
     onTap: () => _navigateWithSlide(context, page),
     child: Container(
@@ -215,10 +221,10 @@ Widget _buildOptionItem(
     decoration: BoxDecoration(
     borderRadius: BorderRadius.circular(20),
     border: GradientBoxBorder(
-    gradient: LinearGradient(colors: [_pink, _blue]),
+    gradient: LinearGradient(colors: AppColors.gradientPinkPurple),
     width: 2,
     ),
-    color: Colors.white,
+    color: isDarkMode ? AppColors.darkSurface : AppColors.bgWhite,
     boxShadow: [
     BoxShadow(
     color: Colors.grey.withOpacity(0.1),
@@ -232,16 +238,16 @@ Widget _buildOptionItem(
     children: [
     Row(
     children: [
-    Icon(icon, color: Colors.black87),
+    Icon(icon, color: isDarkMode ? Colors.white70 : Colors.black87),
     const SizedBox(width: 10),
     Text(title,
-    style: const TextStyle(
+    style: TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w500,
-    color: Colors.black87)),
+    color: isDarkMode ? Colors.white : Colors.black87)),
     ],
     ),
-    const Icon(Icons.chevron_right, color: Colors.black54),
+    Icon(Icons.chevron_right, color: isDarkMode ? Colors.white54 : Colors.black54),
     ],
     ),
     )

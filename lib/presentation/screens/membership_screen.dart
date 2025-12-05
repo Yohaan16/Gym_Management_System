@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class MembershipScreen extends StatefulWidget {
   const MembershipScreen({super.key});
@@ -15,6 +18,8 @@ class _MembershipScreenState extends State<MembershipScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
     // Plan data
     final String title = _isYearly ? "Advanced Plan" : "Normal Plan";
     final int price = _isYearly ? 17000 : 1500;
@@ -32,18 +37,18 @@ class _MembershipScreenState extends State<MembershipScreen> {
           ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Membership",
           style: TextStyle(
-              color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 20),
+              color: theme.appBarTheme.foregroundColor, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -85,7 +90,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
             Center(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[200],
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
@@ -119,6 +124,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
                 title,
                 price,
                 features,
+                isDarkMode: isDarkMode,
                 key: ValueKey(_isYearly),
               ),
             ),
@@ -129,19 +135,21 @@ class _MembershipScreenState extends State<MembershipScreen> {
   }
 
   Widget _buildToggleButton(String text, bool isSelected) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     return GestureDetector(
       onTap: () => setState(() => _isYearly = text.startsWith("Yearly")),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
         decoration: BoxDecoration(
           gradient: isSelected ? LinearGradient(colors: [_pink, _blue]) : null,
+          color: isSelected ? null : (isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[200]),
           borderRadius: BorderRadius.circular(30),
         ),
         alignment: Alignment.center,
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
+            color: isSelected ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black87),
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -151,13 +159,13 @@ class _MembershipScreenState extends State<MembershipScreen> {
   }
 
   Widget _buildPlanCard(String title, int price, List<String> features,
-      {Key? key}) {
+      {Key? key, required bool isDarkMode}) {
     return Container(
       key: key,
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? AppColors.darkSurface : Colors.white,
         border: GradientBoxBorder(
           gradient: LinearGradient(colors: [_pink, _blue]),
           width: 2.5,
@@ -165,7 +173,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: (isDarkMode ? Colors.black : Colors.grey).withOpacity(isDarkMode ? 0.3 : 0.1),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -176,15 +184,18 @@ class _MembershipScreenState extends State<MembershipScreen> {
         children: [
           Text(title,
               textAlign: TextAlign.center,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              )),
           const SizedBox(height: 8),
           Text("Rs $price",
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black)),
+                  color: isDarkMode ? Colors.white : Colors.black)),
           const SizedBox(height: 16),
           Column(
             children: features
@@ -193,14 +204,17 @@ class _MembershipScreenState extends State<MembershipScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("• ",
-                              style:
-                                  TextStyle(fontSize: 14, color: Colors.black87)),
+                          Text("• ",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDarkMode ? Colors.white70 : Colors.black87,
+                              )),
                           Flexible(
                             child: Text(f,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontSize: 14, color: Colors.black87)),
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: isDarkMode ? Colors.white70 : Colors.black87)),
                           ),
                         ],
                       ),

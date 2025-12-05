@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 class CaloriesPage extends StatelessWidget {
   const CaloriesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
     final gradientColors = [const Color(0xFFFF0057), const Color(0xFF009DFF)];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Stack(
           children: [
@@ -30,7 +35,7 @@ class CaloriesPage extends StatelessWidget {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
@@ -57,9 +62,9 @@ class CaloriesPage extends StatelessWidget {
                       BarChartData(
                         borderData: FlBorderData(
                           show: true,
-                          border: const Border(
-                            bottom: BorderSide(width: 1),
-                            left: BorderSide(width: 1),
+                          border: Border(
+                            bottom: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black, width: 1),
+                            left: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black, width: 1),
                           ),
                         ),
                         titlesData: FlTitlesData(
@@ -75,7 +80,7 @@ class CaloriesPage extends StatelessWidget {
                                 if (value % 500 == 0) {
                                   return Text(
                                     value.toInt().toString(),
-                                    style: const TextStyle(fontSize: 10),
+                                    style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white54 : Colors.black54),
                                   );
                                 }
                                 return const SizedBox.shrink();
@@ -90,7 +95,7 @@ class CaloriesPage extends StatelessWidget {
                                 final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                                 return Text(
                                   days[value.toInt() % days.length],
-                                  style: const TextStyle(fontSize: 10),
+                                  style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white54 : Colors.black54),
                                 );
                               },
                             ),
@@ -127,12 +132,14 @@ class CaloriesPage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildStatBox(
+                        context,
                         "Steps",
                         "6320/10000",
                         FontAwesomeIcons.shoePrints,
                         gradientColors,
                       ),
                       _buildStatBox(
+                        context,
                         "Water",
                         "2.4/3L",
                         FontAwesomeIcons.tint,
@@ -144,13 +151,13 @@ class CaloriesPage extends StatelessWidget {
                   const SizedBox(height: 30),
 
                   // --- TEXTFIELDS ---
-                  _buildGradientTextField("Calories Eaten (+)", gradientColors),
+                  _buildGradientTextField(context, "Calories Eaten (+)", gradientColors),
                   const SizedBox(height: 12),
-                  _buildGradientTextField("Calories Burnt (+)", gradientColors),
+                  _buildGradientTextField(context, "Calories Burnt (+)", gradientColors),
                   const SizedBox(height: 12),
-                  _buildGradientTextField("Steps (+)", gradientColors),
+                  _buildGradientTextField(context, "Steps (+)", gradientColors),
                   const SizedBox(height: 12),
-                  _buildGradientTextField("Water Consumed (+)", gradientColors),
+                  _buildGradientTextField(context, "Water Consumed (+)", gradientColors),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -163,7 +170,7 @@ class CaloriesPage extends StatelessWidget {
               right: 0,
               child: Container(
                 padding: const EdgeInsets.all(16),
-                color: Colors.white,
+                color: isDarkMode ? AppColors.darkBg : Colors.white,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: gradientColors),
@@ -195,7 +202,12 @@ class CaloriesPage extends StatelessWidget {
 
   // --- STAT BOX WIDGET ---
   Widget _buildStatBox(
-      String label, String value, IconData icon, List<Color> gradientColors) {
+      BuildContext context,
+      String label, 
+      String value, 
+      IconData icon, 
+      List<Color> gradientColors) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     return Container(
       width: 150,
       height: 90,
@@ -206,7 +218,7 @@ class CaloriesPage extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Center(
@@ -216,10 +228,10 @@ class CaloriesPage extends StatelessWidget {
               FaIcon(icon, color: gradientColors[1], size: 20),
               const SizedBox(height: 4),
               Text(value,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
               const SizedBox(height: 2),
               Text(label,
-                  style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                  style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white54 : Colors.grey)),
             ],
           ),
         ),
@@ -228,7 +240,8 @@ class CaloriesPage extends StatelessWidget {
   }
 
   // --- TEXTFIELD WITH GRADIENT BORDER ---
-  Widget _buildGradientTextField(String label, List<Color> gradientColors) {
+  Widget _buildGradientTextField(BuildContext context, String label, List<Color> gradientColors) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: gradientColors),
@@ -237,14 +250,15 @@ class CaloriesPage extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.all(1.5),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
           borderRadius: BorderRadius.circular(10.5),
         ),
         child: TextField(
           keyboardType: TextInputType.number,
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: const TextStyle(fontSize: 14),
+            labelStyle: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white70 : Colors.black54),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
