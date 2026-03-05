@@ -40,6 +40,12 @@ dependencies:
   fl_chart: ^1.1.1
   provider: ^6.0.0
   shared_preferences: ^2.2.2
+  http: ^1.2.0
+  flutter_stripe: ^10.1.1
+  intl: ^0.19.0
+  qr_flutter: ^4.0.0
+  qr: ^3.0.2
+  lottie: ^3.0.0
 
 
 dev_dependencies:
@@ -62,6 +68,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/lottie/
 
 
 

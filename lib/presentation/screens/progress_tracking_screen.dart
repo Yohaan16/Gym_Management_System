@@ -18,13 +18,10 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   int selectedIndex = 0;
 
   final List<String> tabs = ["Weight", "Calories", "Total Workouts"];
-  final Color pink = const Color(0xFFFF0057);
-  final Color blue = const Color(0xFF009DFF);
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    final theme = Theme.of(context);
+    final themeProvider = context.watch<ThemeProvider>();
     final pages = [
       const WeightPage(),
       const CaloriesPage(),
@@ -32,7 +29,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: themeProvider.getBackgroundColor(),
       body: SafeArea(
         child: Column(
           children: [
@@ -45,7 +42,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                   IconButton(
                     icon: FaIcon(
                       FontAwesomeIcons.chevronLeft,
-                      color: isDarkMode ? Colors.white : Colors.black87,
+                      color: themeProvider.getTextColor(),
                     ),
                     onPressed: () {
                       Navigator.pop(context);
@@ -60,7 +57,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black87,
+                        color: themeProvider.getTextColor(),
                       ),
                     ),
                   ),
@@ -85,11 +82,11 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
                           gradient: isSelected
-                              ? LinearGradient(colors: [pink, blue])
+                              ? LinearGradient(colors: AppColors.gradientBluePink)
                               : null,
-                          color: isSelected ? null : (isDarkMode ? AppColors.darkSurfaceLight : Colors.grey.shade100),
+                          color: isSelected ? null : themeProvider.getSurfaceColor(),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isDarkMode ? AppColors.darkSurfaceLighter : Colors.grey.shade300),
+                          border: Border.all(color: themeProvider.getSurfaceColor()),
                         ),
                         alignment: Alignment.center,
                         child: Text(

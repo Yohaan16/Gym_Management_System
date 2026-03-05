@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gms_mobile/core/constants/app_colors.dart';
 import 'package:gms_mobile/core/providers/theme_provider.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_border.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,25 +22,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider = context.watch<ThemeProvider>();
     final isDarkMode = themeProvider.isDarkMode;
-    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: themeProvider.getBackgroundColor(),
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
+          icon: Icon(Icons.arrow_back_ios_new, color: themeProvider.getIconColor()),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "Settings",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: theme.appBarTheme.foregroundColor,
+            color: themeProvider.getIconColor(),
           ),
         ),
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: themeProvider.getBackgroundColor(),
         elevation: 0,
         centerTitle: true,
       ),
@@ -56,7 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   gradient: LinearGradient(colors: AppColors.gradientPinkPurple),
                   width: 2,
                 ),
-                color: isDarkMode ? AppColors.darkSurface : AppColors.bgWhite,
+                color: themeProvider.getCardColor(),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.withOpacity(0.15),
@@ -71,14 +71,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     "Notifications",
                     _notificationsEnabled,
                     (value) => setState(() => _notificationsEnabled = value),
-                    isDarkMode,
+                    themeProvider,
                   ),
                   const Divider(),
                   _buildToggleRow(
                     "Dark Theme",
                     isDarkMode,
                     (value) => themeProvider.toggleTheme(),
-                    isDarkMode,
+                    themeProvider,
                   ),
                 ],
               ),
@@ -87,9 +87,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 30),
 
             // -------- INFO OPTIONS --------
-            _buildOptionItem(Icons.description_outlined, "Terms & Policy", isDarkMode),
-            _buildOptionItem(Icons.help_outline, "Help Center", isDarkMode),
-            _buildOptionItem(Icons.info_outline, "About App", isDarkMode),
+            _buildOptionItem(Icons.description_outlined, "Terms & Policy", themeProvider),
+            _buildOptionItem(Icons.help_outline, "Help Center", themeProvider),
+            _buildOptionItem(Icons.info_outline, "About App", themeProvider),
           ],
         ),
       ),
@@ -100,8 +100,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String title,
     bool value,
     ValueChanged<bool> onChanged,
-    bool isDarkMode,
+    ThemeProvider themeProvider,
   ) {
+    final isDarkMode = themeProvider.isDarkMode;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -110,7 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: isDarkMode ? AppColors.darkTextPrimary : AppColors.textPrimary,
+            color: themeProvider.getTextColor(),
           ),
         ),
         GestureDetector(
@@ -156,7 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildOptionItem(IconData icon, String title, bool isDarkMode) {
+  Widget _buildOptionItem(IconData icon, String title, ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -166,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           gradient: LinearGradient(colors: AppColors.gradientPinkPurple),
           width: 2,
         ),
-        color: isDarkMode ? AppColors.darkSurface : AppColors.bgWhite,
+        color: themeProvider.getCardColor(),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -182,7 +183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(
                 icon,
-                color: isDarkMode ? const Color(0xFFE0E0E0) : AppColors.textPrimary,
+                color: themeProvider.getTextColor(isPrimary: false),
               ),
               const SizedBox(width: 10),
               Text(
@@ -190,58 +191,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: isDarkMode ? const Color(0xFFE0E0E0) : AppColors.textPrimary,
+                  color: themeProvider.getTextColor(isPrimary: false),
                 ),
               ),
             ],
           ),
           Icon(
             Icons.chevron_right,
-            color: isDarkMode ? AppColors.darkTextLight : Colors.black54,
+            color: themeProvider.getTextColor(isPrimary: false),
           ),
         ],
       ),
     );
   }
-}
-
-// -------- GRADIENT BORDER --------
-class GradientBoxBorder extends BoxBorder {
-  final Gradient gradient;
-  final double width;
-
-  const GradientBoxBorder({required this.gradient, this.width = 2});
-
-  @override
-  void paint(
-    Canvas canvas,
-    Rect rect, {
-    TextDirection? textDirection,
-    BoxShape shape = BoxShape.rectangle,
-    BorderRadius? borderRadius,
-  }) {
-    final Paint paint = Paint()
-      ..shader = gradient.createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width;
-
-    final RRect rrect =
-        RRect.fromRectAndRadius(rect, borderRadius?.topLeft ?? const Radius.circular(0));
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  ShapeBorder scale(double t) => this;
-
-  @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
-
-  @override
-  BorderSide get top => BorderSide.none;
-
-  @override
-  BorderSide get bottom => BorderSide.none;
-
-  @override
-  bool get isUniform => true;
 }

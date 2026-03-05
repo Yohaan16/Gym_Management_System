@@ -1,196 +1,177 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:gms_mobile/core/providers/theme_provider.dart';
 import 'package:gms_mobile/core/constants/app_colors.dart';
+import 'package:gms_mobile/core/providers/auth_provider.dart';
+import 'package:gms_mobile/core/providers/tracking_provider.dart';
+import 'package:gms_mobile/presentation/widgets/calories_widget.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_border.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_button.dart';
 
-class CaloriesPage extends StatelessWidget {
+class CaloriesPage extends StatefulWidget {
   const CaloriesPage({super.key});
 
   @override
+  State<CaloriesPage> createState() => _CaloriesPageState();
+}
+
+class _CaloriesPageState extends State<CaloriesPage> {
+  final Map<String, TextEditingController> _track = {
+    'eat': TextEditingController(),
+    'burn': TextEditingController(),
+    'steps': TextEditingController(),
+    'water': TextEditingController(),
+  };
+
+  final Map<String, TextEditingController> _goal = {
+    'eat': TextEditingController(),
+    'burn': TextEditingController(),
+    'steps': TextEditingController(),
+    'water': TextEditingController(),
+  };
+
+  Map<String, dynamic> _goals = {};
+
+  AuthProvider get _auth => context.read<AuthProvider>();
+  TrackingProvider get _tracking => context.read<TrackingProvider>();
+  ThemeProvider get _theme => context.read<ThemeProvider>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+  }
+
+  Future<void> _loadData() async {
+    final memberId = _auth.memberId ?? 1;
+
+    await Future.wait([
+      _tracking.getTrackingHistory(memberId),
+      _tracking.getDailyGoals(memberId),
+    ]);
+
+    if (_tracking.dailyGoals != null) {
+      _goals = _tracking.dailyGoals!;
+    }
+
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _updateTracking() async {
+    final success = await _tracking.addDailyTracking(
+      memberId: _auth.memberId ?? 1,
+      caloriesIntake: _d(_track['eat']) ?? 0.0,
+      caloriesBurnt: _d(_track['burn']) ?? 0.0,
+      steps: _i(_track['steps']) ?? 0,
+      waterConsumed: _d(_track['water']) ?? 0.0,
+    );
+
+    success
+        ? _onSuccess(_track.values, 'Tracking updated successfully!')
+        : _onError(_tracking.error);
+  }
+
+  Future<void> _updateGoals() async {
+    // parse values from controllers
+    final eat = double.tryParse(_goal['eat']!.text);
+    final burn = double.tryParse(_goal['burn']!.text);
+    final steps = int.tryParse(_goal['steps']!.text);
+    final water = double.tryParse(_goal['water']!.text);
+
+    final success = await _tracking.updateDailyGoals(
+      memberId: _auth.memberId ?? 1,
+      caloriesIntake: eat,
+      caloriesBurnt: burn,
+      steps: steps,
+      waterConsumed: water,
+    );
+
+    if (success && mounted) {
+      Navigator.pop(context);
+      _onSuccess(_goal.values, 'Goals updated successfully!');
+    } else {
+      _onError(_tracking.error);
+    }
+  }
+
+  void _showAddGoalDialog() {
+    _goal['eat']!.text = _goals['calories_intake']?.toString() ?? '';
+    _goal['burn']!.text = _goals['calories_burnt']?.toString() ?? '';
+    _goal['steps']!.text = _goals['steps']?.toString() ?? '';
+    _goal['water']!.text = _goals['water_consumed']?.toString() ?? '';
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        scrollable: true,
+        backgroundColor: _theme.getBackgroundColor(),
+        title: _gradientBox("Set New Goals"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _field("Max Calories Eaten", _goal['eat']!),
+            const SizedBox(height: 8),
+            _field("Max Calories Burnt", _goal['burn']!),
+            const SizedBox(height: 8),
+            _field("Max Steps", _goal['steps']!),
+            const SizedBox(height: 8),
+            _field("Max Water (L)", _goal['water']!),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          GradientButton(
+            label: "Update Goals",
+            onPressed: _updateGoals,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    final theme = Theme.of(context);
-    final gradientColors = [const Color(0xFFFF0057), const Color(0xFF009DFF)];
+    final gradient = AppColors.gradientBluePink;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: _theme.getBackgroundColor(),
       body: SafeArea(
         child: Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(colors: gradientColors),
-                    ),
-                    padding: const EdgeInsets.all(2),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: Text(
-                          "Calories Tracking",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            foreground: Paint()
-                              ..shader = LinearGradient(
-                                colors: gradientColors,
-                              ).createShader(const Rect.fromLTWH(0, 0, 200, 0)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  _gradientBox("Calories Tracking"),
                   const SizedBox(height: 20),
-
-                  // --- BAR CHART ---
-                  SizedBox(
-                    height: 220,
-                    child: BarChart(
-                      BarChartData(
-                        borderData: FlBorderData(
-                          show: true,
-                          border: Border(
-                            bottom: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black, width: 1),
-                            left: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black, width: 1),
-                          ),
-                        ),
-                        titlesData: FlTitlesData(
-                          topTitles:
-                              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles:
-                              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: 500, // cleaner spacing
-                              getTitlesWidget: (value, meta) {
-                                if (value % 500 == 0) {
-                                  return Text(
-                                    value.toInt().toString(),
-                                    style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white54 : Colors.black54),
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
-                              reservedSize: 30,
-                            ),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                                return Text(
-                                  days[value.toInt() % days.length],
-                                  style: TextStyle(fontSize: 10, color: isDarkMode ? Colors.white54 : Colors.black54),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        gridData: FlGridData(show: false),
-                        barGroups: [
-                          for (int i = 0; i < 7; i++)
-                            BarChartGroupData(
-                              x: i,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: 1200 + i * 100,
-                                  color: const Color(0xFF009DFF), // blue = eaten
-                                  width: 8,
-                                ),
-                                BarChartRodData(
-                                  toY: 1500 + i * 80,
-                                  color: const Color(0xFFFF0057), // pink = burnt
-                                  width: 8,
-                                ),
-                              ],
-                              barsSpace: 4,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // --- STEPS AND WATER BOXES ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildStatBox(
-                        context,
-                        "Steps",
-                        "6320/10000",
-                        FontAwesomeIcons.shoePrints,
-                        gradientColors,
-                      ),
-                      _buildStatBox(
-                        context,
-                        "Water",
-                        "2.4/3L",
-                        FontAwesomeIcons.tint,
-                        gradientColors,
-                      ),
-                    ],
-                  ),
-
+                  CaloriesWidget(gradientColors: gradient),
                   const SizedBox(height: 30),
-
-                  // --- TEXTFIELDS ---
-                  _buildGradientTextField(context, "Calories Eaten (+)", gradientColors),
-                  const SizedBox(height: 12),
-                  _buildGradientTextField(context, "Calories Burnt (+)", gradientColors),
-                  const SizedBox(height: 12),
-                  _buildGradientTextField(context, "Steps (+)", gradientColors),
-                  const SizedBox(height: 12),
-                  _buildGradientTextField(context, "Water Consumed (+)", gradientColors),
-                  const SizedBox(height: 100),
+                  _field("Calories Eaten (+)", _track['eat']!),
+                  const SizedBox(height: 10),
+                  _field("Calories Burnt (+)", _track['burn']!),
+                  const SizedBox(height: 10),
+                  _field("Steps (+)", _track['steps']!),
+                  const SizedBox(height: 10),
+                  _field("Water Consumed (+)", _track['water']!),
+                  const SizedBox(height: 20),
+                  GradientButton(
+                    label: "Update Tracking",
+                    onPressed: _updateTracking,
+                  ),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
-
-            // --- FIXED ADD NEW GOAL BUTTON ---
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
               child: Container(
                 padding: const EdgeInsets.all(16),
-                color: isDarkMode ? AppColors.darkBg : Colors.white,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: gradientColors),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    onPressed: () {},
-                    child: const Text(
-                      "Add New Goal",
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                color: _theme.getBackgroundColor(),
+                child: GradientButton(
+                  label: "Add New Goal",
+                  onPressed: _showAddGoalDialog,
                 ),
               ),
             ),
@@ -200,70 +181,56 @@ class CaloriesPage extends StatelessWidget {
     );
   }
 
-  // --- STAT BOX WIDGET ---
-  Widget _buildStatBox(
-      BuildContext context,
-      String label, 
-      String value, 
-      IconData icon, 
-      List<Color> gradientColors) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    return Container(
-      width: 150,
-      height: 90,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradientColors),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              FaIcon(icon, color: gradientColors[1], size: 20),
-              const SizedBox(height: 4),
-              Text(value,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
-              const SizedBox(height: 2),
-              Text(label,
-                  style: TextStyle(fontSize: 13, color: isDarkMode ? Colors.white54 : Colors.grey)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // ---------------- HELPERS ----------------
 
-  // --- TEXTFIELD WITH GRADIENT BORDER ---
-  Widget _buildGradientTextField(BuildContext context, String label, List<Color> gradientColors) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradientColors),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Container(
-        margin: const EdgeInsets.all(1.5),
-        decoration: BoxDecoration(
-          color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
-          borderRadius: BorderRadius.circular(10.5),
-        ),
+  Widget _field(String label, TextEditingController c) => GradientBox(
+        innerPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: TextField(
+          controller: c,
           keyboardType: TextInputType.number,
-          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white70 : Colors.black54),
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 8),
           ),
         ),
-      ),
-    );
+      );
+
+  Widget _gradientBox(String text) => GradientBox(
+        // Keep outer padding thin so the gradient stroke remains thin
+        padding: const EdgeInsets.all(2),
+        // Make inner area wider so the box spans available width
+        innerPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        child: Container(
+          width: double.infinity,
+          alignment: Alignment.center,
+          child: GradientText(text, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      );
+
+  void _onSuccess(Iterable<TextEditingController> ctrls, String msg) async {
+    for (final c in ctrls) {
+      c.clear();
+    }
+    await _loadData();
+    CaloriesWidget.triggerRefresh();
+    _snack(msg);
+  }
+
+  void _onError(String? msg) => _snack(msg ?? 'Something went wrong');
+
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+  double? _d(TextEditingController? c) => double.tryParse(c?.text ?? '');
+  int? _i(TextEditingController? c) => int.tryParse(c?.text ?? '');
+
+  @override
+  void dispose() {
+    for (final c in [..._track.values, ..._goal.values]) {
+      c.dispose();
+    }
+    super.dispose();
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gms_mobile/core/constants/app_colors.dart';
 
 /// Theme provider class to manage theme state
 class ThemeProvider extends ChangeNotifier {
@@ -22,21 +23,32 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Set theme to dark
-  void setDarkTheme() {
-    if (!_isDarkMode) {
-      _isDarkMode = true;
-      _prefs.setBool('isDarkMode', true);
-      notifyListeners();
+  /// Get primary text color based on theme
+  Color getTextColor({bool isPrimary = true}) {
+    if (isPrimary) {
+      return _isDarkMode ? Colors.white : const Color(0xFF1A1A1A);
+    } else {
+      return _isDarkMode ? const Color(0xFFE0E0E0) : const Color(0xFF666666);
     }
   }
 
-  /// Set theme to light
-  void setLightTheme() {
-    if (_isDarkMode) {
-      _isDarkMode = false;
-      _prefs.setBool('isDarkMode', false);
-      notifyListeners();
-    }
+  /// Get background color based on theme
+  Color getBackgroundColor() {
+    return _isDarkMode ? AppColors.darkBg : Colors.white;
+  }
+
+  /// Get surface color based on theme
+  Color getSurfaceColor() {
+    return _isDarkMode ? AppColors.darkSurfaceLight : Colors.grey.shade100;
+  }
+
+  /// Get icon color based on theme
+  Color getIconColor() {
+    return _isDarkMode ? Colors.white : const Color(0xFF1A1A1A);
+  }
+
+  /// Get card color based on theme
+  Color getCardColor() {
+    return _isDarkMode ? AppColors.darkSurfaceLight : Colors.white;
   }
 }

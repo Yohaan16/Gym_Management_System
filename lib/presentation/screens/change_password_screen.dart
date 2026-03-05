@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gms_mobile/core/providers/theme_provider.dart';
-import 'package:gms_mobile/core/constants/app_colors.dart';
+import 'package:gms_mobile/core/providers/auth_provider.dart';
+import 'package:gms_mobile/core/providers/profile_provider.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_button.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -11,156 +13,180 @@ class ChangePasswordScreen extends StatefulWidget {
 }
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
-  final Color _pink = const Color(0xFFFF0057);
-  final Color _blue = const Color(0xFF009DFF);
+  final _currentCtrl = TextEditingController();
+  final _newCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
 
-  final TextEditingController _currentPasswordController =
-      TextEditingController();
-  final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  bool _hideCurrent = true, _hideNew = true, _hideConfirm = true;
+  bool _loading = false;
+  String? _error;
 
-  bool _obscureCurrent = true;
-  bool _obscureNew = true;
-  bool _obscureConfirm = true;
+  Future<void> _changePassword() async {
+    final auth = context.read<AuthProvider>();
+    final profile = context.read<ProfileProvider>();
+    final memberId = auth.memberId;
+
+    if (memberId == null) return _setError('User not logged in');
+
+    final current = _currentCtrl.text.trim();
+    final next = _newCtrl.text.trim();
+    final confirm = _confirmCtrl.text.trim();
+
+    if ([current, next, confirm].any((e) => e.isEmpty)) {
+      return _setError('All fields are required');
+    }
+    if (next != confirm) {
+      return _setError('New password and confirmation do not match');
+    }
+    if (next.length < 6) {
+      return _setError('New password must be at least 6 characters long');
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final success = await profile.changePassword(
+      memberId: memberId,
+      currentPassword: current,
+      newPassword: next,
+      confirmPassword: confirm,
+    );
+
+    if (!mounted) return;
+
+    setState(() => _loading = false);
+
+    if (!success) {
+      return _setError(profile.error ?? 'Failed to change password');
+    }
+
+    _currentCtrl.clear();
+    _newCtrl.clear();
+    _confirmCtrl.clear();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Password changed successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    Navigator.pop(context);
+  }
+
+  void _setError(String msg) {
+    setState(() => _error = msg);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    final theme = Theme.of(context);
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: themeProvider.getBackgroundColor(),
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
+          icon: Icon(Icons.arrow_back_ios_new, color: themeProvider.getIconColor()),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Change Password",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: theme.appBarTheme.foregroundColor,
-          ),
+          'Change Password',
+          style: TextStyle(fontWeight: FontWeight.bold, color: themeProvider.getIconColor()),
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: themeProvider.getBackgroundColor(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 10),
-            _buildPasswordField(
-              label: "Current Password",
-              controller: _currentPasswordController,
-              obscureText: _obscureCurrent,
-              onToggle: () {
-                setState(() => _obscureCurrent = !_obscureCurrent);
-              },
-              isDarkMode: isDarkMode,
+            _passwordField(
+              'Current Password',
+              _currentCtrl,
+              _hideCurrent,
+              () => setState(() => _hideCurrent = !_hideCurrent),
+              themeProvider,
             ),
             const SizedBox(height: 20),
-            _buildPasswordField(
-              label: "New Password",
-              controller: _newPasswordController,
-              obscureText: _obscureNew,
-              onToggle: () {
-                setState(() => _obscureNew = !_obscureNew);
-              },
-              isDarkMode: isDarkMode,
+            _passwordField(
+              'New Password',
+              _newCtrl,
+              _hideNew,
+              () => setState(() => _hideNew = !_hideNew),
+              themeProvider,
             ),
             const SizedBox(height: 20),
-            _buildPasswordField(
-              label: "Confirm New Password",
-              controller: _confirmPasswordController,
-              obscureText: _obscureConfirm,
-              onToggle: () {
-                setState(() => _obscureConfirm = !_obscureConfirm);
-              },
-              isDarkMode: isDarkMode,
+            _passwordField(
+              'Confirm New Password',
+              _confirmCtrl,
+              _hideConfirm,
+              () => setState(() => _hideConfirm = !_hideConfirm),
+              themeProvider,
             ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () {
-                  // handle password validation + saving
-                },
-                child: Ink(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [_pink, _blue]),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Container(
-                    alignment: Alignment.center,
-                    child: const Text(
-                      "Save Password",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            const SizedBox(height: 20),
+            if (_error != null) _errorBox(_error!),
+            const SizedBox(height: 20),
+            _saveButton(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPasswordField({
-    required String label,
-    required TextEditingController controller,
-    required bool obscureText,
-    required VoidCallback onToggle,
-    required bool isDarkMode,
-  }) {
+  Widget _passwordField(
+    String label,
+    TextEditingController ctrl,
+    bool obscure,
+    VoidCallback toggle,
+    ThemeProvider themeProvider,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: isDarkMode ? Colors.white : Colors.black87,
-          ),
-        ),
+        Text(label,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: themeProvider.getTextColor(),
+            )),
         const SizedBox(height: 8),
         TextField(
-          controller: controller,
-          obscureText: obscureText,
-          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+          controller: ctrl,
+          obscureText: obscure,
+          style: TextStyle(color: themeProvider.getTextColor()),
           decoration: InputDecoration(
             filled: true,
-            fillColor: isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[100],
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
+            fillColor: themeProvider.getSurfaceColor(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
             suffixIcon: IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: isDarkMode ? Colors.white70 : Colors.grey[600],
-              ),
-              onPressed: onToggle,
+              icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+              onPressed: toggle,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _errorBox(String msg) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.shade300),
+      ),
+      child: Text(msg, style: TextStyle(color: Colors.red.shade800)),
+    );
+  }
+
+  Widget _saveButton() {
+    return GradientButton(
+      label: 'Save Password',
+      onPressed: _changePassword,
+      isLoading: _loading,
     );
   }
 }

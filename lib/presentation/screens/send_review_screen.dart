@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gms_mobile/core/providers/theme_provider.dart';
-import 'package:gms_mobile/core/constants/app_colors.dart';
+import 'package:gms_mobile/core/providers/auth_provider.dart';
+import 'package:gms_mobile/core/providers/review_provider.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_border.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_button.dart';
 
 class SendReviewScreen extends StatefulWidget {
   const SendReviewScreen({super.key});
@@ -11,9 +14,6 @@ class SendReviewScreen extends StatefulWidget {
 }
 
 class _SendReviewScreenState extends State<SendReviewScreen> {
-  final Color _pink = const Color(0xFFFF0057);
-  final Color _blue = const Color(0xFF009DFF);
-
   final List<String> _topics = [
     "Equipment",
     "Facilities",
@@ -26,26 +26,128 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
   String? _selectedTopic;
   final TextEditingController _reviewController = TextEditingController();
 
+  bool _isLoading = false;
+
+  Future<void> _submitReview() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final reviewProvider = Provider.of<ReviewProvider>(context, listen: false);
+    final memberId = authProvider.memberId;
+
+    if (memberId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not logged in'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final reviewTitle = _selectedTopic;
+    final message = _reviewController.text.trim();
+
+    // Validation
+    if (reviewTitle == null || reviewTitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a topic'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (message.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please write your review'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (message.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Review must be at least 10 characters long'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final success = await reviewProvider.submitReview(
+        memberId: memberId,
+        reviewTitle: reviewTitle,
+        message: message,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        setState(() {
+          _reviewController.clear();
+          _selectedTopic = null;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Review submitted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(reviewProvider.error ?? 'Failed to submit review'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final themeProvider = context.watch<ThemeProvider>();
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: themeProvider.getBackgroundColor(),
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
+          icon: Icon(Icons.arrow_back_ios_new, color: themeProvider.getIconColor()),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "Send Review",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: theme.appBarTheme.foregroundColor,
+            color: themeProvider.getIconColor(),
           ),
         ),
         centerTitle: true,
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: themeProvider.getBackgroundColor(),
         elevation: 0,
       ),
       body: Padding(
@@ -57,39 +159,29 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
               "Select Topic",
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.white : Colors.black87,
+                color: themeProvider.getTextColor(),
                 fontSize: 16,
               ),
             ),
             const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_pink, _blue]),
-                borderRadius: BorderRadius.circular(12),
-              ),
+            GradientBox(
               padding: const EdgeInsets.all(1.5),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedTopic,
-                    hint: Text("Choose a topic", style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54)),
-                    icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white70 : Colors.black54),
-                    isExpanded: true,
-                    onChanged: (value) {
-                      setState(() => _selectedTopic = value);
-                    },
-                    items: _topics
-                        .map((topic) => DropdownMenuItem(
-                              value: topic,
-                              child: Text(topic, style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87)),
-                            ))
-                        .toList(),
-                  ),
+              innerPadding: const EdgeInsets.symmetric(horizontal: 12),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedTopic,
+                  hint: Text("Choose a topic", style: TextStyle(color: themeProvider.getTextColor(isPrimary: false))),
+                  icon: Icon(Icons.arrow_drop_down, color: themeProvider.getTextColor(isPrimary: false)),
+                  isExpanded: true,
+                  onChanged: (value) {
+                    setState(() => _selectedTopic = value);
+                  },
+                  items: _topics
+                      .map((topic) => DropdownMenuItem(
+                            value: topic,
+                            child: Text(topic, style: TextStyle(color: themeProvider.getTextColor())),
+                          ))
+                      .toList(),
                 ),
               ),
             ),
@@ -98,67 +190,31 @@ class _SendReviewScreenState extends State<SendReviewScreen> {
               "Your Review",
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.white : Colors.black87,
+                color: themeProvider.getTextColor(),
                 fontSize: 16,
               ),
             ),
             const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_pink, _blue]),
-                borderRadius: BorderRadius.circular(12),
-              ),
+            GradientBox(
               padding: const EdgeInsets.all(1.5),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TextField(
-                  controller: _reviewController,
-                  maxLines: 6,
-                  style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
-                  decoration: InputDecoration(
-                    hintText: "Write your review here...",
-                    hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black54),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.all(14),
-                  ),
+              innerPadding: const EdgeInsets.all(14),
+              child: TextField(
+                controller: _reviewController,
+                maxLines: 6,
+                style: TextStyle(color: themeProvider.getTextColor()),
+                decoration: InputDecoration(
+                  hintText: "Write your review here...",
+                  hintStyle: TextStyle(color: themeProvider.getTextColor(isPrimary: false)),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
             ),
             const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () {
-                  // Handle send review logic
-                },
-                child: Ink(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [_pink, _blue]),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Container(
-                    alignment: Alignment.center,
-                    child: const Text(
-                      "Submit Review",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            GradientButton(
+              label: "Submit Review",
+              onPressed: _submitReview,
+              isLoading: _isLoading,
             ),
           ],
         ),

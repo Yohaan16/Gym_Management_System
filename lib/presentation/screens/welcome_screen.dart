@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:gms_mobile/presentation/screens/notifications_screen.dart';
 import 'package:gms_mobile/presentation/widgets/calories_widget.dart';
-import 'package:gms_mobile/presentation/widgets/stat_box.dart';
+import 'package:gms_mobile/presentation/widgets/image_slider_widget.dart';
 import 'package:gms_mobile/core/providers/theme_provider.dart';
 import 'package:gms_mobile/core/constants/app_colors.dart';
-
-// ✅ Import your other screens
-import 'profile_screen.dart';
-import 'class_booking_screen.dart';
-import 'progress_tracking_screen.dart';
-import 'workout_details.dart';
-
-const Color _blue = Color(0xFF3A86FF);
-const Color _purple = Color(0xFF8338EC);
+import 'package:gms_mobile/presentation/routes/app_routes.dart';
+import 'package:gms_mobile/core/constants/app_constants.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,9 +16,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
-  int _currentImageIndex = 0;
-  late final PageController _pageController = PageController();
-
   final List<String> _images = const [
     "assets/images/bodybuilding.jpeg",
     "assets/images/yoga.jpeg",
@@ -34,43 +23,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _startAutoSwipe();
-  }
-
-  Future<void> _startAutoSwipe() async {
-    while (mounted) {
-      await Future.delayed(const Duration(seconds: 3));
-      if (!mounted) return;
-      setState(() {
-        _currentImageIndex = (_currentImageIndex + 1) % _images.length;
-      });
-      _pageController.animateToPage(
-        _currentImageIndex,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    final gradientColors = [const Color(0xFFFF0057), const Color(0xFF009DFF)];
-    final theme = Theme.of(context);
-    final textColor = isDarkMode ? Colors.white : Colors.black87;
-    final iconColor = isDarkMode ? Colors.white : Colors.black87;
+    final themeProvider = context.watch<ThemeProvider>();
+    final gradientColors = AppColors.gradientBluePink;
+    final textColor = themeProvider.getTextColor();
+    final iconColor = themeProvider.getIconColor();
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: themeProvider.getBackgroundColor(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 20),
@@ -88,38 +49,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         // ✅ Profile icon -> ProfileScreen
                         GestureDetector(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ProfileScreen(),
-                              ),
-                            );
+                            AppRoutes.navigateTo(context, AppConstants.routeProfile);
                           },
                           child: CircleAvatar(
-                            radius: 22,
-                            backgroundColor: isDarkMode ? AppColors.darkSurfaceLight : Colors.grey,
-                            child: Icon(Icons.person, color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          "Welcome Yohaan",
-                          style: TextStyle(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
-                          ),
+                              radius: 22,
+                              backgroundColor: themeProvider.isDarkMode 
+                                  ? themeProvider.getSurfaceColor() 
+                                  : Colors.grey.shade600,
+                              child: Icon(Icons.person, color: Colors.white),
+                            ),
                         ),
                       ],
                     ),
                     GestureDetector(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const NotificationsScreen(),
-                              ),
-                            );
+                            AppRoutes.navigateTo(context, AppConstants.routeNotifications);
                           },
                       child: Icon(FontAwesomeIcons.bell, color: iconColor),
                     ),
@@ -130,72 +74,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               // --- Banner ---
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
+                child: ImageSliderWidget(
+                  items: _images.map((image) => {"image": image}).toList(),
+                  autoSlide: true,
                   height: size.height * 0.32,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Stack(
-                      children: [
-                        PageView.builder(
-                          controller: _pageController,
-                          itemCount: _images.length,
-                          onPageChanged: (i) => setState(() => _currentImageIndex = i),
-                          itemBuilder: (context, index) => Image.asset(
-                            _images[index],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                          ),
+                  borderRadius: BorderRadius.circular(20),
+                  activeDotGradient: LinearGradient(colors: AppColors.gradientPurpleBlue),
+                  inactiveDotColor: Colors.white70,
+                  staticOverlayWidget: GestureDetector(
+                    onTap: () {
+                      AppRoutes.navigateTo(context, AppConstants.routeClassBooking);
+                    },
+                    child: Container(
+                      color: Colors.black.withOpacity(0.35),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        "Book Your Classes Now",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
                         ),
-
-                        // ✅ Make the overlay clickable (Class Booking)
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ClassBookingScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            color: Colors.black.withOpacity(0.35),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              "Book Your Classes Now",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        Positioned(
-                          bottom: 12,
-                          left: 0,
-                          right: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(_images.length, (index) {
-                              final active = index == _currentImageIndex;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                width: active ? 10 : 6,
-                                height: active ? 10 : 6,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: active
-                                      ? LinearGradient(colors: [_blue, _purple])
-                                      : null,
-                                  color: active ? null : Colors.white70,
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -221,15 +121,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     // ✅ Arrow button -> ProgressTrackingScreen
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ProgressTrackingScreen(),
-                          ),
-                        );
+                        AppRoutes.navigateTo(context, AppConstants.routeProgressTracking);
                       },
-                      child: Icon(FontAwesomeIcons.chevronRight,
-                          color: isDarkMode ? Colors.grey : Colors.black54, size: 16),
+                        child: Icon(FontAwesomeIcons.chevronRight,
+                          color: themeProvider.getTextColor(isPrimary: false), size: 16),
                     ),
                   ],
                 ),
@@ -239,25 +134,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               // ✅ Calories widgets
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: CaloriesBarChart(gradientColors: gradientColors),
-              ),
-              const SizedBox(height: 25),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  StatBox(
-                    label: "Steps",
-                    value: "6320/10000",
-                    icon: FontAwesomeIcons.shoePrints,
-                    gradientColors: gradientColors,
-                  ),
-                  StatBox(
-                    label: "Water",
-                    value: "2.4/3L",
-                    icon: FontAwesomeIcons.tint,
-                    gradientColors: gradientColors,
-                  ),
-                ],
+                child: CaloriesWidget(gradientColors: gradientColors),
               ),
 
               const SizedBox(height: 30),
@@ -268,10 +145,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 child: Text(
                   "Workout Plans",
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: themeProvider.getTextColor(),
+                    ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -311,11 +188,10 @@ class _WorkoutPlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WorkoutDetailsPage(title: title, image: image),
-          ),
+        AppRoutes.navigateTo(
+          context, 
+          AppConstants.routeWorkoutDetails,
+          arguments: {'title': title, 'image': image},
         );
       },
       child: Container(

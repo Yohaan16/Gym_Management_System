@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gms_mobile/core/providers/theme_provider.dart';
 import 'package:gms_mobile/core/constants/app_colors.dart';
+import 'package:gms_mobile/core/providers/membership_provider.dart';
+import 'package:gms_mobile/core/providers/auth_provider.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_border.dart';
+import 'package:gms_mobile/presentation/widgets/gradient_button.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 
 class MembershipScreen extends StatefulWidget {
   const MembershipScreen({super.key});
@@ -11,18 +16,163 @@ class MembershipScreen extends StatefulWidget {
 }
 
 class _MembershipScreenState extends State<MembershipScreen> {
-  final Color _pink = const Color(0xFFFF0057);
-  final Color _blue = const Color(0xFF009DFF);
-
   bool _isYearly = false;
 
   @override
+  void initState() {
+    super.initState();
+    _fetchMembershipData();
+  }
+
+  Future<void> _fetchMembershipData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final membershipProvider = Provider.of<MembershipProvider>(context, listen: false);
+    final memberId = authProvider.memberId;
+
+    if (memberId != null) {
+      await membershipProvider.getMembership(memberId);
+    }
+  }
+
+  Future<void> _renewMembership() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final memberId = authProvider.memberId;
+    final membershipProvider = context.read<MembershipProvider>();
+
+    if (memberId != null) {
+      final membershipType = _isYearly ? "Advanced Yearly" : "Normal Monthly";
+      final amount = _isYearly ? 10000.0 : 990.0; // Amount in your currency
+
+      try {
+        // Show loading dialog
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // Step 1: Create payment intent
+        final paymentIntentData = await membershipProvider.createMembershipPaymentIntent(
+          memberId: memberId,
+          membershipType: membershipType,
+          amount: amount,
+        );
+
+        // Dismiss loading dialog
+        if (mounted) Navigator.pop(context);
+
+        if (paymentIntentData == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to create payment: ${membershipProvider.error}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        final clientSecret = paymentIntentData['clientSecret'];
+        final paymentIntentId = paymentIntentData['paymentIntentId'];
+
+        if (clientSecret == null || paymentIntentId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Payment setup failed'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Step 2: Initialize payment sheet with Stripe
+        try {
+          await Stripe.instance.initPaymentSheet(
+            paymentSheetParameters: SetupPaymentSheetParameters(
+              paymentIntentClientSecret: clientSecret,
+              merchantDisplayName: 'GMS Fitness',
+              style: ThemeMode.dark,
+            ),
+          );
+
+          // Step 3: Present payment sheet
+          await Stripe.instance.presentPaymentSheet();
+
+          // Step 4: Confirm membership renewal after successful payment
+          final success = await membershipProvider.confirmMembershipRenewal(
+            memberId: memberId,
+            membershipType: membershipType,
+            paymentIntentId: paymentIntentId,
+            amount: amount,
+          );
+
+          if (!success && membershipProvider.error != null) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to renew membership: ${membershipProvider.error}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            membershipProvider.clearError();
+          } else if (success) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Membership renewed successfully!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  e is StripeException
+                      ? e.error.localizedMessage ?? 'Payment failed'
+                      : e.toString(),
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        // Dismiss loading dialog if still open
+        if (mounted) {
+          try {
+            Navigator.pop(context);
+          } catch (_) {}
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    final theme = Theme.of(context);
+    final themeProvider = context.watch<ThemeProvider>();
     // Plan data
     final String title = _isYearly ? "Advanced Plan" : "Normal Plan";
-    final int price = _isYearly ? 17000 : 1500;
+    final int price = _isYearly ? 10000 : 990;
     final List<String> features = _isYearly
         ? [
             "Everything in normal plan included",
@@ -37,18 +187,18 @@ class _MembershipScreenState extends State<MembershipScreen> {
           ];
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: themeProvider.getBackgroundColor(),
       appBar: AppBar(
         title: Text(
           "Membership",
           style: TextStyle(
-              color: theme.appBarTheme.foregroundColor, fontWeight: FontWeight.bold, fontSize: 20),
+              color: themeProvider.getIconColor(), fontWeight: FontWeight.bold, fontSize: 20),
         ),
         centerTitle: true,
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: themeProvider.getBackgroundColor(),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: theme.appBarTheme.foregroundColor),
+          icon: Icon(Icons.arrow_back_ios_new, color: themeProvider.getIconColor()),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -62,25 +212,48 @@ class _MembershipScreenState extends State<MembershipScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_pink, _blue]),
+                gradient: LinearGradient(colors: [AppColors.primaryPink, AppColors.secondaryBlue]),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: const [
-                  Text(
-                    "Current Plan: Advanced Plan",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    "Days Remaining: 12 days",
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
+              child: Consumer<MembershipProvider>(
+                builder: (context, membershipProvider, child) {
+                  final membershipData = membershipProvider.membership ?? {};
+                  final membershipType = membershipData['membership_type'] ?? 'No Active Plan';
+                  
+                  // Use days_remaining from backend, or calculate from end_date
+                  int daysRemaining = membershipData['days_remaining'] ?? 0;
+                  
+                  if (daysRemaining == 0) {
+                    final endDate = membershipData['end_date'];
+                    if (endDate != null) {
+                      try {
+                        final expiry = DateTime.parse(endDate.toString());
+                        daysRemaining = expiry.difference(DateTime.now()).inDays;
+                        if (daysRemaining < 0) daysRemaining = 0;
+                      } catch (e) {
+                        daysRemaining = 0;
+                      }
+                    }
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Current Plan: $membershipType",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "Days Remaining: $daysRemaining days",
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
 
@@ -90,7 +263,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
             Center(
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[200],
+                  color: themeProvider.getSurfaceColor(),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
@@ -124,7 +297,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
                 title,
                 price,
                 features,
-                isDarkMode: isDarkMode,
+                themeProvider: themeProvider,
                 key: ValueKey(_isYearly),
               ),
             ),
@@ -135,21 +308,21 @@ class _MembershipScreenState extends State<MembershipScreen> {
   }
 
   Widget _buildToggleButton(String text, bool isSelected) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return GestureDetector(
       onTap: () => setState(() => _isYearly = text.startsWith("Yearly")),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
         decoration: BoxDecoration(
-          gradient: isSelected ? LinearGradient(colors: [_pink, _blue]) : null,
-          color: isSelected ? null : (isDarkMode ? AppColors.darkSurfaceLight : Colors.grey[200]),
+          gradient: isSelected ? LinearGradient(colors: [AppColors.primaryPink, AppColors.secondaryBlue]) : null,
+          color: isSelected ? null : themeProvider.getSurfaceColor(),
           borderRadius: BorderRadius.circular(30),
         ),
         alignment: Alignment.center,
         child: Text(
           text,
           style: TextStyle(
-            color: isSelected ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black87),
+            color: isSelected ? Colors.white : themeProvider.getTextColor(isPrimary: false),
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -159,21 +332,22 @@ class _MembershipScreenState extends State<MembershipScreen> {
   }
 
   Widget _buildPlanCard(String title, int price, List<String> features,
-      {Key? key, required bool isDarkMode}) {
+      {Key? key, required ThemeProvider themeProvider}) {
+    final isDarkMode = themeProvider.isDarkMode;
     return Container(
       key: key,
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: isDarkMode ? AppColors.darkSurface : Colors.white,
+        color: themeProvider.getCardColor(),
         border: GradientBoxBorder(
-          gradient: LinearGradient(colors: [_pink, _blue]),
+          gradient: LinearGradient(colors: [AppColors.primaryPink, AppColors.secondaryBlue]),
           width: 2.5,
         ),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: (isDarkMode ? Colors.black : Colors.grey).withOpacity(isDarkMode ? 0.3 : 0.1),
+            color: themeProvider.getIconColor().withOpacity(isDarkMode ? 0.3 : 0.1),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -187,7 +361,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black87,
+                color: themeProvider.getTextColor(),
               )),
           const SizedBox(height: 8),
           Text("Rs $price",
@@ -195,7 +369,7 @@ class _MembershipScreenState extends State<MembershipScreen> {
               style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black)),
+                  color: themeProvider.getTextColor())),
           const SizedBox(height: 16),
           Column(
             children: features
@@ -207,14 +381,14 @@ class _MembershipScreenState extends State<MembershipScreen> {
                           Text("• ",
                               style: TextStyle(
                                 fontSize: 14,
-                                color: isDarkMode ? Colors.white70 : Colors.black87,
+                                color: themeProvider.getTextColor(isPrimary: false),
                               )),
                           Flexible(
                             child: Text(f,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     fontSize: 14,
-                                    color: isDarkMode ? Colors.white70 : Colors.black87)),
+                                    color: themeProvider.getTextColor(isPrimary: false))),
                           ),
                         ],
                       ),
@@ -224,73 +398,18 @@ class _MembershipScreenState extends State<MembershipScreen> {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_pink, _blue]),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Container(
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: const Text(
-                    "Renew Now",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16),
-                  ),
-                ),
-              ),
+            child: Consumer<MembershipProvider>(
+              builder: (context, membership, child) {
+                return GradientButton(
+                  label: membership.isLoading ? "Renewing..." : "Renew Now",
+                  onPressed: _renewMembership,
+                  isLoading: membership.isLoading,
+                );
+              },
             ),
           ),
         ],
       ),
     );
   }
-}
-
-// ---------- GRADIENT BORDER ----------
-class GradientBoxBorder extends BoxBorder {
-  final Gradient gradient;
-  final double width;
-
-  const GradientBoxBorder({required this.gradient, this.width = 2});
-
-  @override
-  void paint(Canvas canvas, Rect rect,
-      {TextDirection? textDirection,
-      BoxShape shape = BoxShape.rectangle,
-      BorderRadius? borderRadius}) {
-    final Paint paint = Paint()
-      ..shader = gradient.createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width;
-
-    final RRect rrect =
-        RRect.fromRectAndRadius(rect, borderRadius?.topLeft ?? const Radius.circular(0));
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  ShapeBorder scale(double t) => this;
-
-  @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.all(width);
-
-  @override
-  BorderSide get top => BorderSide.none;
-
-  @override
-  BorderSide get bottom => BorderSide.none;
-
-  @override
-  bool get isUniform => true;
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:gms_mobile/core/providers/theme_provider.dart';
-import 'package:gms_mobile/core/constants/app_colors.dart';
 import 'package:gms_mobile/core/constants/app_constants.dart';
 
 /// Reusable stat box widget used across the app
@@ -22,7 +21,7 @@ class StatBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final themeProvider = Provider.of<ThemeProvider>(context);
     
     return Container(
       width: 150,
@@ -34,11 +33,11 @@ class StatBox extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: isDarkMode ? AppColors.darkSurfaceLight : Colors.white,
+          color: themeProvider.getCardColor(),
           borderRadius: BorderRadius.circular(AppConstants.radiusMedium - 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.1),
+              color: themeProvider.getIconColor().withOpacity(themeProvider.isDarkMode ? 0.3 : 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -53,7 +52,7 @@ class StatBox extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: isDarkMode ? Colors.white54 : Colors.grey,
+                  color: themeProvider.getTextColor(isPrimary: false),
                   fontSize: 12,
                 ),
               ),
@@ -61,7 +60,7 @@ class StatBox extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black87,
+                  color: themeProvider.getTextColor(),
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
