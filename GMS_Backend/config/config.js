@@ -6,7 +6,7 @@ module.exports = {
   NODE_ENV: process.env.NODE_ENV,
 
   // Database Configuration
-  DATABASE: {
+  DATABASE: process.env.DATABASE_URL ? parseDatabaseUrl(process.env.DATABASE_URL) : {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
@@ -41,3 +41,26 @@ module.exports = {
     credentials: true
   }
 };
+
+// Parse Railway DATABASE_URL format: mysql://user:password@host:port/database
+function parseDatabaseUrl(url) {
+  const regex = /mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/;
+  const match = url.match(regex);
+  
+  if (!match) {
+    throw new Error('Invalid DATABASE_URL format. Expected: mysql://user:password@host:port/database');
+  }
+
+  const [, user, password, host, port, database] = match;
+  
+  return {
+    host,
+    user,
+    password,
+    database,
+    port: parseInt(port),
+    waitForConnections: true,
+    connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT) || 10,
+    queueLimit: 0
+  };
+}
