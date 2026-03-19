@@ -70,9 +70,11 @@ class NoticeModel {
            OR (n.target_type = 'SELECTED' AND nr.member_id IS NOT NULL)
       `;
       params.push(memberId);
+    } else {
+      sql += ` WHERE n.target_type = 'ALL'`;
     }
 
-    return db.query(`${sql} WHERE n.target_type = 'ALL' ORDER BY n.posted_date DESC, n.notice_id DESC LIMIT 10`, params);
+    return db.query(`${sql} ORDER BY n.posted_date DESC, n.notice_id DESC LIMIT 10`, params);
   }
 
   static async getNoticeById(noticeId) {

@@ -27,6 +27,11 @@ router.get('/current', asyncHandler(async (_, res) => {
   res.json(rows);
 }));
 
+router.get('/current/count', asyncHandler(async (_, res) => {
+  const count = await AttendanceModel.getCurrentInCountForToday();
+  res.json({ count });
+}));
+
 router.post('/scan', scanLimiter, asyncHandler(async (req, res) => {
   const token = req.body.token || req.body.qr;
   const staffId = req.user ? req.user.id : null; 

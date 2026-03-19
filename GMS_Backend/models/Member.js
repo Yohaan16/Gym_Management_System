@@ -29,7 +29,11 @@ class MemberModel {
   }
 
   static async getById(memberId) {
-    const sql = 'SELECT member_id, name, email, phone, gender, dateOfBirth, address FROM member WHERE member_id = ?';
+    const sql = `
+      SELECT member_id, name, email, phone, gender, dateOfBirth, address, profile_picture
+      FROM member
+      WHERE member_id = ?
+    `;
     const rows = await db.query(sql, [memberId]);
     return rows.length > 0 ? rows[0] : null;
   }
@@ -42,43 +46,32 @@ class MemberModel {
   }
 
   static async changePassword(memberId, currentPassword, newPassword) {
-    // Get current password hash
     const sql = 'SELECT password FROM member WHERE member_id = ?';
     const rows = await db.query(sql, [memberId]);
-    
+
     if (rows.length === 0) {
       throw new Error('Member not found');
     }
 
     const hashedPassword = rows[0].password;
 
-    // Verify current password
     const isValidPassword = await UserModel.verifyPassword(currentPassword, hashedPassword);
     if (!isValidPassword) {
       throw new Error('Current password is incorrect');
     }
 
-    // Hash new password
     const newHashedPassword = await bcrypt.hash(newPassword, config.SECURITY.bcryptRounds);
-
-    // Update password
-    const updateSql = 'UPDATE member SET password = ? WHERE member_id = ?';
-    await db.query(updateSql, [newHashedPassword, memberId]);
+    await db.query('UPDATE member SET password = ? WHERE member_id = ?', [newHashedPassword, memberId]);
 
     return { message: 'Password changed successfully' };
   }
 
-  /**
-   * Send a membership renewal notification to a specific member
-   */
   static async notifyMembershipRenewal(memberId, staffId) {
-    // Get member details
     const member = await this.getById(memberId);
     if (!member) {
       throw new Error('Member not found');
     }
 
-    // Get membership details
     const membershipSql = `
       SELECT membership_type, end_date, status
       FROM membership
@@ -89,24 +82,20 @@ class MemberModel {
     const membershipRows = await db.query(membershipSql, [memberId]);
     const membership = membershipRows.length > 0 ? membershipRows[0] : null;
 
-    // Create renewal message
     let message = `Dear ${member.name}, your membership renewal is due. `;
-    
     if (membership) {
       const endDate = new Date(membership.end_date).toLocaleDateString();
       message += `Your ${membership.membership_type} membership expires on ${endDate}. `;
     }
-    
     message += `Please renew your membership to continue enjoying our gym services. Contact reception for renewal options.`;
 
-    // Create notice
     const noticeData = {
       staff_id: staffId,
       title: 'Membership Renewal Reminder',
-      message: message,
+      message,
       posted_date: new Date().toISOString().split('T')[0],
       target_type: 'SELECTED',
-      recipients: [memberId]
+      recipients: [memberId],
     };
 
     const result = await NoticeModel.createNotice(noticeData);
@@ -114,7 +103,7 @@ class MemberModel {
     return {
       message: 'Membership renewal notification sent successfully',
       notice_id: result.notice_id,
-      member_name: member.name
+      member_name: member.name,
     };
   }
 }

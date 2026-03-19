@@ -49,7 +49,7 @@ class AttendanceModel {
   static async getCurrentlyIn() {
     const rows = await db.query(`
       SELECT a.attendance_id, a.member_id, a.status, a.scanned_at,
-             m.member_id AS member_id, m.name, m.email, m.phone
+             m.name, m.email, m.phone, m.profile_picture
       FROM attendance a
       JOIN member m ON a.member_id = m.member_id
       WHERE a.scanned_at = (
@@ -59,6 +59,25 @@ class AttendanceModel {
       ORDER BY a.scanned_at DESC
     `);
     return rows;
+  }
+
+  /**
+   * Get count of currently checked-in members for today
+   */
+  static async getCurrentInCountForToday() {
+    const rows = await db.query(`
+      SELECT COUNT(*) as count FROM (
+        SELECT a.member_id
+        FROM attendance a
+        WHERE DATE(a.scanned_at) = CURDATE()
+        AND a.scanned_at = (
+          SELECT MAX(a2.scanned_at) FROM attendance a2 
+          WHERE a2.member_id = a.member_id AND DATE(a2.scanned_at) = CURDATE()
+        )
+        AND a.status = 'IN'
+      ) as subquery
+    `);
+    return rows[0].count;
   }
 }
 

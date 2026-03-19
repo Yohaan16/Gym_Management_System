@@ -1,11 +1,11 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../config/database');
-const BookingService = require('../services/BookingService');
-const NoticeModel = require('../models/Notice');
+const express               = require('express');
+const router                = express.Router();
+const BookingModel          = require('../models/Booking');
+const BookingService        = require('../services/BookingService');
+const AutoRescheduleService = require('../services/AutoRescheduleService');
 
 const asyncHandler = fn => (req, res) =>
-  fn(req, res).catch(err => res.status(500).json({ error: err.message }));
+  fn(req, res).catch(err => res.status(500).json({ success: false, message: err.message }));
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -13,10 +13,7 @@ const today = () => new Date().toISOString().split('T')[0];
    CLASS DETAILS
 ======================= */
 router.get('/class/:classId', asyncHandler(async (req, res) => {
-  const [data] = await db.query(
-    'SELECT class_id, class_name, price, capacity FROM class WHERE class_id = ?',
-    [req.params.classId]
-  );
+  const data = await BookingModel.getClassDetails(req.params.classId);
   if (!data) return res.status(404).json({ error: 'Class not found' });
   res.json(data);
 }));
@@ -25,12 +22,7 @@ router.get('/class/:classId', asyncHandler(async (req, res) => {
    MEMBER BOOKINGS
 ======================= */
 router.get('/member/:memberId', asyncHandler(async (req, res) => {
-  const bookings = await db.query(
-    `SELECT booking_id, class_id, booking_date, booking_time, status
-     FROM booking
-     WHERE member_id = ? AND LOWER(status) = 'confirmed'`,
-    [req.params.memberId]
-  );
+  const bookings = await BookingModel.getMemberBookings(req.params.memberId);
   res.json(bookings);
 }));
 
@@ -42,96 +34,63 @@ router.post('/', asyncHandler(async (req, res) => {
   res.status(201).json(result);
 }));
 
-
 /* =======================
-   ALL BOOKINGS ##
+   ALL BOOKINGS
 ======================= */
 router.get('/retrieve', asyncHandler(async (_, res) => {
-  const bookings = await db.query(`
-    SELECT b.booking_id, b.class_id, b.booking_date, b.booking_time, b.status, m.member_id, m.name, m.email, m.phone, c.class_name
-    FROM booking b
-    JOIN member m ON b.member_id = m.member_id
-    JOIN class c ON b.class_id = c.class_id
-    ORDER BY b.booking_date DESC, b.booking_time ASC
-  `);
+  const bookings = await BookingModel.getAllBookings();
   res.json(bookings);
 }));
 
 /* =======================
-   CANCEL CLASS SLOT ##
+   CANCEL CLASS SLOT (staff)
+   Instead of cancelling member bookings and sending cancellation notices,
+   AutoRescheduleService reschedules each member to their optimal alternative
+   slot using the Hungarian Algorithm, then sends a rescheduling notice.
+   Any members that could not be rescheduled (no available slots) are
+   cancelled as a fallback.
 ======================= */
 router.post('/cancel-class', asyncHandler(async (req, res) => {
   const { classId, cancelDate, cancelTimeslot } = req.body;
-  const staffId = req.user.id; // From JWT token
+  const staffId = req.user.id;
 
   if (!classId || !cancelDate || !cancelTimeslot || !staffId)
-    return res.status(400).json({ error: 'Missing required fields' });
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
 
-  try {
-    const existing = await db.query(
-      `SELECT * FROM cancel_class
-       WHERE class_id = ? AND DATE(cancel_date) = ? AND cancel_timeslot = ?`,
-      [classId, cancelDate, cancelTimeslot]
+  const alreadyCancelled = await BookingModel.isSlotCancelled(classId, cancelDate, cancelTimeslot);
+  if (alreadyCancelled)
+    return res.status(400).json({ success: false, message: 'Slot already cancelled' });
+
+  // Step 1 — fetch affected members BEFORE cancelling the slot
+  const affectedMembers = await BookingModel.getAffectedMembers(
+    classId, cancelDate, cancelTimeslot
+  );
+
+  // Step 2 — reschedule affected members via Hungarian Algorithm
+  let rescheduleResult = { rescheduled: 0, failed: 0, results: [] };
+  if (affectedMembers.length > 0) {
+    rescheduleResult = await AutoRescheduleService.rescheduleFromCancellation(
+      classId, cancelDate, cancelTimeslot, affectedMembers
     );
-    if (existing.length) return res.status(400).json({ error: 'Slot already cancelled' });
-
-    const affected = await db.query(`
-      SELECT b.member_id, m.name AS member_name, c.class_name
-      FROM booking b
-      JOIN member m ON b.member_id = m.member_id
-      JOIN class c ON b.class_id = c.class_id
-      WHERE b.class_id = ?
-        AND DATE(b.booking_date) = ?
-        AND b.booking_time = ?
-        AND b.status = 'confirmed'
-    `, [classId, cancelDate, cancelTimeslot]);
-
-    await db.query(
-      `UPDATE booking
-       SET status = 'cancelled'
-       WHERE class_id = ? AND DATE(booking_date) = ? AND booking_time = ?`,
-      [classId, cancelDate, cancelTimeslot]
-    );
-
-    await db.query(
-      'INSERT INTO cancel_class (class_id, cancel_date, cancel_timeslot, cancelled_by) VALUES (?, ?, ?, ?)',
-      [classId, cancelDate, cancelTimeslot, staffId]
-    );
-
-    for (const b of affected) {
-      try {
-        await NoticeModel.createNotice({
-          staff_id: staffId,
-          title: 'Class Cancellation Notice',
-          message:
-            `Dear ${b.member_name},\n\n` +
-            `Your ${b.class_name} class on ${cancelDate} at ${cancelTimeslot} has been cancelled.\n\nRefund available at front desk.`,
-          posted_date: today(),
-          target_type: 'SELECTED',
-          recipients: [b.member_id]
-        });
-      } catch (noticeError) {
-      }
-    }
-
-    res.json({ message: 'Class slot cancelled', affectedBookings: affected.length });
-  } catch (error) {
-    res.status(500).json({ error: error.message || 'Failed to cancel class' });
   }
+
+  // Step 3 — mark slot as cancelled (catches any members that couldn't be rescheduled)
+  await BookingModel.cancelClassSlot(classId, cancelDate, cancelTimeslot, staffId);
+
+  res.json({
+    message: 'Class slot cancelled',
+    affectedBookings:  affectedMembers.length,
+    rescheduled:       rescheduleResult.rescheduled,
+    couldNotReschedule: rescheduleResult.failed,
+    details:           rescheduleResult.results,
+  });
 }));
 
 /* =======================
-   CANCELLED SLOTS ##
+   CANCELLED SLOTS
 ======================= */
 router.get('/cancelled-slots', asyncHandler(async (_, res) => {
-  const slots = await db.query(`
-    SELECT cc.cancel_id, cc.class_id, cc.cancel_date, cc.cancel_timeslot,
-           cc.cancelled_at, c.class_name, s.name AS cancelled_by_name
-    FROM cancel_class cc
-    JOIN class c ON cc.class_id = c.class_id
-    JOIN staff s ON cc.cancelled_by = s.staff_id
-    ORDER BY cc.cancel_date DESC, cc.cancel_timeslot ASC
-  `);
+  const slots = await BookingModel.getCancelledSlots();
   res.json(slots);
 }));
 
@@ -142,39 +101,67 @@ router.get('/slot-capacity/:classId/:date/:timeslot', asyncHandler(async (req, r
   let { classId, date, timeslot } = req.params;
   try { timeslot = decodeURIComponent(timeslot); } catch (_) {}
 
-
-
-  req._slotQuery = { classId, date, timeslot };
-  return slotCapacityHandler(req, res);
+  const data = await BookingModel.getSlotCapacity(classId, date, timeslot);
+  if (!data) return res.status(404).json({ success: false, message: 'Class not found' });
+  res.json(data);
 }));
 
 router.get('/slot-capacity', asyncHandler(async (req, res) => {
-  return slotCapacityHandler(req, res);
+  const { classId, date, timeslot } = req.query;
+  if (!classId || !date || !timeslot)
+    return res.status(400).json({ success: false, message: 'Missing required parameters' });
+
+  const data = await BookingModel.getSlotCapacity(classId, date, timeslot);
+  if (!data) return res.status(404).json({ success: false, message: 'Class not found' });
+  res.json(data);
 }));
 
-async function slotCapacityHandler(req, res) {
-  const { classId, date, timeslot } = req._slotQuery || {
-    classId: req.query.classId,
-    date: req.query.date,
-    timeslot: req.query.timeslot
-  };
+/* =======================
+   CANCEL BOOKING (member)
+======================= */
+router.delete('/:bookingId', asyncHandler(async (req, res) => {
+  const { bookingId } = req.params;
+  const memberId = parseInt(req.headers['x-member-id'], 10);
 
-  if (!classId || !date || !timeslot) {
-    return res.status(400).json({ error: 'Missing required parameters' });
-  }
+  if (!bookingId || !memberId)
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
 
+  const booking = await BookingModel.getBookingById(bookingId, memberId);
+  if (!booking)
+    return res.status(404).json({ success: false, message: 'Booking not found' });
+  if (booking.status !== 'Confirmed')
+    return res.status(400).json({ success: false, message: 'Booking is not confirmed' });
 
-  const [classRow] = await db.query('SELECT capacity FROM class WHERE class_id = ?', [classId]);
-  if (!classRow) return res.status(404).json({ error: 'Class not found' });
+  await BookingModel.cancelBooking(bookingId);
+  res.json({ success: true, message: 'Booking cancelled successfully' });
+}));
 
+/* =======================
+   RESCHEDULE BOOKING
+======================= */
+router.put('/:bookingId/reschedule', asyncHandler(async (req, res) => {
+  const { bookingId } = req.params;
+  const memberId = parseInt(req.headers['x-member-id'], 10);
+  const { newDate, newTime } = req.body;
 
-  const [countRow] = await db.query(
-    `SELECT COUNT(*) AS count FROM booking
-     WHERE class_id = ? AND booking_date = ? AND booking_time = ? AND status = 'confirmed'`,
-    [classId, date, timeslot]
-  );
+  if (!bookingId || !memberId || !newDate || !newTime)
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
 
-  return res.json({ capacity: classRow.capacity, count: countRow.count });
-}
+  const booking = await BookingModel.getBookingById(bookingId, memberId);
+  if (!booking)
+    return res.status(404).json({ success: false, message: 'Booking not found' });
+  if (booking.status !== 'Confirmed')
+    return res.status(400).json({ success: false, message: 'Only confirmed bookings can be rescheduled' });
+
+  await BookingModel.rescheduleBooking({
+    bookingId,
+    memberId,
+    classId: booking.class_id,
+    newDate,
+    newTime,
+  });
+
+  res.json({ success: true, message: 'Booking rescheduled successfully' });
+}));
 
 module.exports = router;

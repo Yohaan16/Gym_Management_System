@@ -19,12 +19,16 @@ const registrationRoutes = require('./routes/registrations');
 const noticesRoutes = require('./routes/notices');
 const attendanceRoutes = require('./routes/attendance');
 const adminRoutes = require('./routes/admin');
+require('./jobs/autoReschedule');
 
 const app = express();
 
 // Middleware
 app.use(cors(config.CORS));
 app.use(express.json());
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
 
 
 // Initialize database
