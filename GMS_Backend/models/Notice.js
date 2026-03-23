@@ -1,4 +1,6 @@
-const db = require('../config/database');
+// models/Notice.js
+const db         = require('../config/database');
+const FCMService = require('../services/FCMService');
 const { ValidationError, NotFoundError } = require('../utils/errorHandler');
 
 class NoticeModel {
@@ -28,30 +30,94 @@ class NoticeModel {
      CREATE
   ========================== */
 
-  static async createNotice({ staff_id, title, message, target_type = 'ALL', recipients = [] }) {
+  static async createNotice({
+    staff_id, title, message, target_type = 'ALL', recipients = []
+  }) {
     if (!staff_id) throw new ValidationError('Staff ID required');
-    if (!['ALL', 'SELECTED'].includes(target_type)) throw new ValidationError('Invalid target type');
+    if (!['ALL', 'SELECTED'].includes(target_type))
+      throw new ValidationError('Invalid target type');
 
     const data = this.validate(title, message);
 
+    // ── Insert notice ────────────────────────────────────────────────────────
     const { insertId } = await db.query(
       `INSERT INTO notice (staff_id, title, message, target_type, posted_date)
        VALUES (?, ?, ?, ?, CURDATE())`,
       [staff_id, data.title, data.message, target_type]
     );
 
-    const rows = recipients.map(memberId => [insertId, memberId]);
-
+    // ── Insert recipients ────────────────────────────────────────────────────
     if (target_type === 'SELECTED' && recipients.length) {
+      const rows        = recipients.map(memberId => [insertId, memberId]);
       const placeholders = rows.map(() => '(?, ?)').join(',');
-      const flatValues = rows.flat();
       await db.query(
         `INSERT INTO notice_recipient (notice_id, member_id) VALUES ${placeholders}`,
-        flatValues
+        rows.flat()
       );
     }
 
+    // ── Send push notifications (non-blocking) ───────────────────────────────
+    // We fire-and-forget so a slow FCM response never delays the API response.
+    this._sendPushNotifications({
+      target_type,
+      recipients,
+      title: data.title,
+      message: data.message,
+      noticeId: insertId,
+    }).catch(err =>
+      console.error('[Notice] Push notification error:', err.message)
+    );
+
     return { notice_id: insertId, ...data, target_type };
+  }
+
+  /* ==========================
+     PUSH NOTIFICATIONS
+  ========================== */
+
+  /**
+   * Fetches FCM tokens for the relevant members and sends push notifications.
+   *
+   * For target_type = 'ALL'      → fetches all member FCM tokens
+   * For target_type = 'SELECTED' → fetches tokens only for specified recipients
+   */
+  static async _sendPushNotifications({
+    target_type, recipients, title, message, noticeId,
+  }) {
+    let fcmTokens = [];
+
+    if (target_type === 'ALL') {
+      // Fetch all members who have an FCM token registered
+      const rows = await db.query(
+        `SELECT fcm_token FROM member WHERE fcm_token IS NOT NULL AND fcm_token != ''`
+      );
+      fcmTokens = rows.map(r => r.fcm_token);
+    } else if (target_type === 'SELECTED' && recipients.length > 0) {
+      // Fetch tokens only for the specified recipients
+      const placeholders = recipients.map(() => '?').join(',');
+      const rows = await db.query(
+        `SELECT fcm_token FROM member
+         WHERE member_id IN (${placeholders})
+           AND fcm_token IS NOT NULL AND fcm_token != ''`,
+        recipients
+      );
+      fcmTokens = rows.map(r => r.fcm_token);
+    }
+
+    if (fcmTokens.length === 0) {
+      console.log('[Notice] No FCM tokens found for recipients — skipping push.');
+      return;
+    }
+
+    // Truncate message body for notification preview (max 100 chars)
+    const previewBody = message.length > 100
+      ? `${message.substring(0, 97)}...`
+      : message;
+
+    await FCMService.sendToTokens(fcmTokens, title, previewBody, {
+      notice_id: String(noticeId),
+      type:      'notice',
+    });
   }
 
   /* ==========================
@@ -59,7 +125,7 @@ class NoticeModel {
   ========================== */
 
   static async getAllNotices(memberId = null) {
-    let sql = this.baseSelect();
+    let sql    = this.baseSelect();
     const params = [];
 
     if (memberId) {
@@ -74,7 +140,10 @@ class NoticeModel {
       sql += ` WHERE n.target_type = 'ALL'`;
     }
 
-    return db.query(`${sql} ORDER BY n.posted_date DESC, n.notice_id DESC LIMIT 10`, params);
+    return db.query(
+      `${sql} ORDER BY n.posted_date DESC, n.notice_id DESC LIMIT 10`,
+      params
+    );
   }
 
   static async getNoticeById(noticeId) {
@@ -107,7 +176,10 @@ class NoticeModel {
   ========================== */
 
   static async deleteNotice(noticeId) {
-    const res = await db.query(`DELETE FROM notice WHERE notice_id = ?`, [noticeId]);
+    const res = await db.query(
+      `DELETE FROM notice WHERE notice_id = ?`,
+      [noticeId]
+    );
     if (!res.affectedRows) throw new NotFoundError('Notice');
     return { success: true };
   }

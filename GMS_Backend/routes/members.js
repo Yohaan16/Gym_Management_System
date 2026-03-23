@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const MemberModel = require('../models/Member');
+const { asyncHandler } = require('../utils/errorHandler');
+const db = require('../config/database');
 
 // Staff authorization middleware
 const requireStaffRole = (req, res, next) => {
@@ -108,5 +110,24 @@ router.post('/:memberId/notify-renewal', requireStaffRole, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.post('/fcm-token', asyncHandler(async (req, res) => {
+  const { member_id, fcm_token } = req.body;
+ 
+  if (!member_id) {
+    return res.status(400).json({ success: false, message: 'member_id is required' });
+  }
+ 
+  // fcm_token can be null (on logout) or a string (on login)
+  await db.query(
+    `UPDATE member SET fcm_token = ? WHERE member_id = ?`,
+    [fcm_token ?? null, member_id]
+  );
+ 
+  res.json({
+    success: true,
+    message: fcm_token ? 'FCM token registered' : 'FCM token cleared',
+  });
+}));
 
 module.exports = router;

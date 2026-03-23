@@ -1,16 +1,25 @@
--- Migration script to update booking_time column from TIME to VARCHAR
--- Run this if you have existing data in the booking table
+-- -- Migration script to update booking_time column from TIME to VARCHAR
+-- -- Run this if you have existing data in the booking table
 
-ALTER TABLE booking MODIFY COLUMN booking_time VARCHAR(20) NOT NULL;
+-- -- Add payment_intent_id column to payment table
+-- ALTER TABLE payment ADD COLUMN payment_intent_id VARCHAR(255) NULL AFTER payment_id;
 
--- Add status column to registration_application table
-ALTER TABLE registration_application ADD COLUMN status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending';
+-- -- Add payment_intent_id column to booking table
+-- ALTER TABLE booking ADD COLUMN payment_intent_id VARCHAR(255) NULL AFTER booking_time;
 
--- Update member table to include additional fields
-ALTER TABLE member ADD COLUMN gender ENUM('Male','Female') DEFAULT 'Male';
-ALTER TABLE member ADD COLUMN dateOfBirth DATE;
-ALTER TABLE member ADD COLUMN address VARCHAR(255);
-ALTER TABLE member ADD COLUMN password VARCHAR(255);
+-- -- Update booking status to include 'Waiting'
+-- ALTER TABLE booking MODIFY COLUMN status ENUM('Confirmed', 'Cancelled', 'Pending', 'Waiting') DEFAULT 'Pending';
+
+-- ALTER TABLE booking MODIFY COLUMN booking_time VARCHAR(20) NOT NULL;
+
+-- -- Add status column to registration_application table
+-- ALTER TABLE registration_application ADD COLUMN status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending';
+
+-- -- Update member table to include additional fields
+-- ALTER TABLE member ADD COLUMN gender ENUM('Male','Female') DEFAULT 'Male';
+-- ALTER TABLE member ADD COLUMN dateOfBirth DATE;
+-- ALTER TABLE member ADD COLUMN address VARCHAR(255);
+-- ALTER TABLE member ADD COLUMN password VARCHAR(255);
 
 -- Create membership table
 CREATE TABLE IF NOT EXISTS membership (
@@ -52,17 +61,17 @@ CREATE TABLE IF NOT EXISTS notice_recipient (
 );
 
 -- Insert sample data for testing
-INSERT INTO member (name, email, phone, gender, dateOfBirth, address, password) VALUES
-('John Smith', 'john@example.com', '123-456-7890', 'Male', '1990-05-15', '123 Main St, City, State', '$2b$10$hashedpassword1'),
-('Emma Wilson', 'emma@example.com', '123-456-7891', 'Female', '1985-08-22', '456 Oak Ave, City, State', '$2b$10$hashedpassword2'),
-('David Jones', 'david@example.com', '123-456-7892', 'Male', '1992-12-10', '789 Pine Rd, City, State', '$2b$10$hashedpassword3'),
-('Sophia Brown', 'sophia@example.com', '123-456-7893', 'Female', '1988-03-30', '321 Elm St, City, State', '$2b$10$hashedpassword4');
+-- INSERT INTO member (name, email, phone, gender, dateOfBirth, address, password) VALUES
+-- ('John Smith', 'john@example.com', '123-456-7890', 'Male', '1990-05-15', '123 Main St, City, State', '$2b$10$hashedpassword1'),
+-- ('Emma Wilson', 'emma@example.com', '123-456-7891', 'Female', '1985-08-22', '456 Oak Ave, City, State', '$2b$10$hashedpassword2'),
+-- ('David Jones', 'david@example.com', '123-456-7892', 'Male', '1992-12-10', '789 Pine Rd, City, State', '$2b$10$hashedpassword3'),
+-- ('Sophia Brown', 'sophia@example.com', '123-456-7893', 'Female', '1988-03-30', '321 Elm St, City, State', '$2b$10$hashedpassword4');
 
-INSERT INTO membership (member_id, start_date, end_date, membership_type, status) VALUES
-(1, '2026-01-01', '2026-12-31', 'Premium', 'active'),
-(2, '2026-01-01', '2026-06-30', 'Standard', 'active'),
-(3, '2025-12-01', '2026-01-15', 'Basic', 'active'),
-(4, '2025-06-01', '2025-12-31', 'Premium', 'expired');
+-- INSERT INTO membership (member_id, start_date, end_date, membership_type, status) VALUES
+-- (1, '2026-01-01', '2026-12-31', 'Premium', 'active'),
+-- (2, '2026-01-01', '2026-06-30', 'Standard', 'active'),
+-- (3, '2025-12-01', '2026-01-15', 'Basic', 'active'),
+-- (4, '2025-06-01', '2025-12-31', 'Premium', 'expired');
 
 -- Create cancel_class table for cancelled class slots
 CREATE TABLE IF NOT EXISTS cancel_class (

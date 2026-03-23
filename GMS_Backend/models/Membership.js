@@ -31,7 +31,12 @@ class MembershipModel {
   static async renewMembership(memberId, membershipType) {
     const normalizedType = String(membershipType).toLowerCase().trim();
     
-    const daysToAdd = normalizedType === 'normal plan' ? 30 : 365;
+    // Map membership type to duration (in days)
+    // Valid types: 'normal plan' (30 days) or 'advanced plan' (365 days)
+    const daysToAdd = normalizedType === 'Normal Plan' ? 30 : 365;
+    
+    // Store with proper capitalization for consistency
+    const storedType = normalizedType === 'Normal Plan' ? 'Normal Plan' : 'Advanced Plan';
 
     const currentMembership = await db.query(
       "SELECT membership_id, end_date FROM membership WHERE member_id = ? AND (status = 'active' OR status = 'expired') ORDER BY end_date DESC LIMIT 1",
@@ -50,14 +55,14 @@ class MembershipModel {
              membership_type = ?,
              status = 'active'
          WHERE membership_id = ?`,
-        [currentEndDate, currentEndDate, currentEndDate, currentEndDate, daysToAdd, normalizedType, membershipId]
+        [currentEndDate, currentEndDate, currentEndDate, currentEndDate, daysToAdd, storedType, membershipId]
       );
     } else {
       await db.query(
         `INSERT INTO membership
          (member_id, start_date, end_date, status, membership_type)
          VALUES (?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), 'active', ?)`,
-        [memberId, daysToAdd, normalizedType]
+        [memberId, daysToAdd, storedType]
       );
     }
 

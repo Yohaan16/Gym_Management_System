@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS booking (
   class_id INT,
   booking_date DATE NOT NULL,
   booking_time VARCHAR(20) NOT NULL,
-  status ENUM('Confirmed', 'Cancelled', 'Pending') DEFAULT 'Pending',
+  payment_intent_id VARCHAR(255) NULL,
+  status ENUM('Confirmed', 'Cancelled', 'Pending', 'Waiting') DEFAULT 'Pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (member_id) REFERENCES member(member_id) ON DELETE CASCADE
 );
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS booking (
 -- Create payment table
 CREATE TABLE IF NOT EXISTS payment (
   payment_id INT AUTO_INCREMENT PRIMARY KEY,
+  payment_intent_id VARCHAR(255) NULL,
   member_id INT NULL,
   application_id INT NULL,
   payment_source VARCHAR(50) DEFAULT 'registration',

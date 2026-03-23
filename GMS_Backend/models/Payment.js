@@ -28,19 +28,21 @@ class PaymentModel {
     memberId,
     applicationId,
     amount,
-    paymentMethod
+    paymentMethod,
+    paymentIntentId = null
   }) {
     if (!amount) throw new ValidationError('Amount is required');
 
     const result = await db.query(
-      `INSERT INTO payment (payment_source, member_id, application_id, amount, payment_method)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO payment (payment_source, member_id, application_id, amount, payment_method, payment_intent_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         paymentSource,
         this.normalizeId(memberId),
         this.normalizeId(applicationId),
         amount,
-        paymentMethod
+        paymentMethod,
+        paymentIntentId
       ]
     );
     return result.insertId;

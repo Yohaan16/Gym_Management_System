@@ -13,12 +13,13 @@ class PaymentService {
   /* =======================
      STRIPE HELPERS
   ======================= */
-  static async createIntent({ amount, metadata, description }) {
+  static async createIntent({ amount, metadata, description, captureMethod = 'automatic' }) {
     const intent = await stripe.paymentIntents.create({
-      amount: cents(amount),
-      currency: 'mur',
+      amount:         cents(amount),
+      currency:       'mur',
       metadata,
-      description
+      description,
+      capture_method: captureMethod,
     });
     return { clientSecret: intent.client_secret, paymentIntentId: intent.id };
   }
@@ -28,11 +29,10 @@ class PaymentService {
   ======================= */
   static async createPaymentIntent(amount, applicationId) {
     required(amount, applicationId);
-
     return this.createIntent({
       amount,
-      metadata: { application_id: applicationId, payment_source: 'registration' },
-      description: `Registration payment for application #${applicationId}`
+      metadata:    { application_id: applicationId, payment_source: 'registration' },
+      description: `Registration payment for application #${applicationId}`,
     });
   }
 
@@ -41,17 +41,14 @@ class PaymentService {
       applicationId = await this.getLatestPendingApplication();
     }
 
-    // Verify Stripe payment BEFORE recording (if paymentIntentId provided)
     if (paymentIntentId) {
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
       if (paymentIntent.status !== 'succeeded') {
         throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
       }
-
-      const intendedAmount = Math.round(amount * 100); // Convert to cents
+      const intendedAmount = Math.round(amount * 100);
       if (paymentIntent.amount !== intendedAmount) {
-        throw new ValidationError(`Payment amount mismatch. Expected ${intendedAmount} cents, got ${paymentIntent.amount} cents`);
+        throw new ValidationError(`Payment amount mismatch.`);
       }
     }
 
@@ -60,13 +57,11 @@ class PaymentService {
       applicationId,
       memberId: null,
       amount,
-      paymentMethod
+      paymentMethod,
+      paymentIntentId,
     });
 
-    // Just update the payment status, don't create member yet
-    // Member will be created when they first login or when admin approves
     await PaymentModel.updateRegistrationPaymentStatus(applicationId, 'Approved');
-
     return { message: 'Registration payment completed', payment_status: 'completed' };
   }
 
@@ -89,11 +84,10 @@ class PaymentService {
   ======================= */
   static async createClassBookingPaymentIntent(amount, classId, memberId) {
     required(amount, classId, memberId);
-
     return this.createIntent({
       amount,
-      metadata: { class_id: classId, member_id: memberId, payment_source: 'class_booking' },
-      description: `Class booking payment for class #${classId}`
+      metadata:    { class_id: classId, member_id: memberId, payment_source: 'class_booking' },
+      description: `Class booking payment for class #${classId}`,
     });
   }
 
@@ -101,14 +95,12 @@ class PaymentService {
     required(memberId, classId, amount, paymentIntentId);
 
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    
     if (paymentIntent.status !== 'succeeded') {
       throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
     }
-
-    const intendedAmount = Math.round(amount * 100); // Convert to cents
+    const intendedAmount = Math.round(amount * 100);
     if (paymentIntent.amount !== intendedAmount) {
-      throw new ValidationError(`Payment amount mismatch. Expected ${intendedAmount} cents, got ${paymentIntent.amount} cents`);
+      throw new ValidationError(`Payment amount mismatch.`);
     }
 
     await PaymentModel.recordPayment({
@@ -117,10 +109,82 @@ class PaymentService {
       applicationId: null,
       amount,
       paymentMethod,
-      stripePaymentIntentId: paymentIntentId
+      paymentIntentId,
     });
 
     return { message: 'Booking payment completed', payment_status: 'completed' };
+  }
+
+  /* =======================
+     WAITLIST PAYMENTS
+     Uses capture_method: 'manual' — card is authorised but NOT charged yet.
+     Funds are captured automatically when the member is promoted from
+     the waitlist via WaitlistService.promoteNext().
+  ======================= */
+
+  /**
+   * Creates a Payment Intent with manual capture for a waitlist entry.
+   * The card is authorised (funds reserved) but not charged until promotion.
+   *
+   * @param {number} amount     — class price
+   * @param {number} classId
+   * @param {number} memberId
+   * @param {number} bookingId  — the newly created Waiting booking ID
+   */
+  static async createWaitlistPaymentIntent(amount, classId, memberId, bookingId) {
+    required(amount, classId, memberId, bookingId);
+
+    return this.createIntent({
+      amount,
+      metadata: {
+        class_id:       classId,
+        member_id:      memberId,
+        booking_id:     bookingId,
+        payment_source: 'waitlist',
+      },
+      description:   `Waitlist hold for class #${classId} — booking #${bookingId}`,
+      captureMethod: 'manual', // ← key: authorise only, do not charge yet
+    });
+  }
+
+  /**
+   * Records the waitlist payment intent in the payment table.
+   * Called after the member completes the Stripe payment sheet.
+   * Status will remain as authorised (not captured) until promotion.
+   *
+   * @param {object} params
+   * @param {number} params.memberId
+   * @param {number} params.bookingId   — the Waiting booking ID
+   * @param {number} params.amount
+   * @param {string} params.paymentIntentId
+   * @param {string} params.paymentMethod
+   */
+  static async recordWaitlistPayment({
+    memberId, bookingId, amount,
+    paymentIntentId, paymentMethod = 'Card',
+  }) {
+    required(memberId, bookingId, amount, paymentIntentId);
+
+    // Verify the Payment Intent exists and is in requires_capture state
+    // (meaning the card was authorised successfully)
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (!['requires_capture', 'succeeded'].includes(paymentIntent.status)) {
+      throw new ValidationError(
+        `Waitlist payment authorisation failed. Status: ${paymentIntent.status}`
+      );
+    }
+
+    await PaymentModel.recordPayment({
+      paymentSource:   'waitlist',
+      memberId,
+      applicationId:   null,
+      amount,
+      paymentMethod,
+      paymentIntentId,
+      bookingId,       // link payment to the waiting booking
+    });
+
+    return { message: 'Waitlist payment authorised', payment_status: 'authorised' };
   }
 
   /* =======================
@@ -128,61 +192,61 @@ class PaymentService {
   ======================= */
   static async createMembershipPaymentIntent(amount, memberId, membershipType) {
     required(amount, memberId, membershipType);
-
     return this.createIntent({
       amount,
       metadata: {
-        member_id: memberId,
+        member_id:       memberId,
         membership_type: membershipType,
-        payment_source: 'membership_renewal'
+        payment_source:  'membership_renewal',
       },
-      description: `Membership renewal for ${membershipType}`
+      description: `Membership renewal for ${membershipType}`,
     });
   }
 
   static async recordMembershipPayment({ memberId, membershipType, paymentIntentId, amount, paymentMethod = 'Card' }) {
     required(memberId, membershipType, paymentIntentId, amount);
 
-    // Verify Stripe payment
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    
     if (paymentIntent.status !== 'succeeded') {
       throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
     }
-
-    const intendedAmount = Math.round(amount * 100); // Convert to cents
+    const intendedAmount = Math.round(amount * 100);
     if (paymentIntent.amount !== intendedAmount) {
-      throw new ValidationError(`Payment amount mismatch. Expected ${intendedAmount} cents, got ${paymentIntent.amount} cents`);
+      throw new ValidationError(`Payment amount mismatch.`);
     }
 
-    // Record payment in database
     await PaymentModel.recordPayment({
       paymentSource: 'membership renewal',
       memberId,
       applicationId: null,
       amount,
-      paymentMethod
+      paymentMethod,
+      paymentIntentId,
     });
 
-    // Renew the membership
     const MembershipModel = require('../models/Membership');
     await MembershipModel.renewMembership(memberId, membershipType);
-
-    // Get updated membership info with days_remaining calculated
     const updatedMembership = await MembershipModel.getCurrentMembership(memberId);
 
     return {
-      message: 'Membership renewed successfully',
-      payment_status: 'completed',
-      membership: updatedMembership
+      message:          'Membership renewed successfully',
+      payment_status:   'completed',
+      membership:       updatedMembership,
     };
   }
 
   static async handleSuccessfulPayment(paymentIntent) {
     const applicationId = paymentIntent.metadata.application_id;
-    const amount = paymentIntent.amount / 100;
+    const amount        = paymentIntent.amount / 100;
 
-    await PaymentModel.recordCardPayment(applicationId, amount, paymentIntent.id);
+    await PaymentModel.recordPayment({
+      paymentSource:   'registration',
+      applicationId,
+      memberId:        null,
+      amount,
+      paymentMethod:   'Card',
+      paymentIntentId: paymentIntent.id,
+    });
     await PaymentModel.updateRegistrationPaymentStatus(applicationId, 'Approved');
   }
 
@@ -191,18 +255,15 @@ class PaymentService {
   ======================= */
   static async recordStaffPayment(applicationId, paymentMethod) {
     required(applicationId, paymentMethod);
-
     const AMOUNT = 1000.0;
     await PaymentModel.recordPayment({
       paymentSource: 'registration',
       applicationId,
-      memberId: null,
-      amount: AMOUNT,
-      paymentMethod
+      memberId:      null,
+      amount:        AMOUNT,
+      paymentMethod,
     });
-
     await PaymentModel.updateRegistrationPaymentStatus(applicationId, 'Approved');
-
     return { message: 'Staff payment recorded', payment_status: 'completed' };
   }
 
