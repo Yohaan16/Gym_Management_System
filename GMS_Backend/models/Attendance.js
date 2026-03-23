@@ -52,7 +52,8 @@ class AttendanceModel {
              m.name, m.email, m.phone, m.profile_picture
       FROM attendance a
       JOIN member m ON a.member_id = m.member_id
-      WHERE a.scanned_at = (
+      WHERE DATE(a.scanned_at) = CURDATE() 
+      AND a.scanned_at = (
         SELECT MAX(a2.scanned_at) FROM attendance a2 WHERE a2.member_id = a.member_id
       )
       AND a.status = 'IN'
