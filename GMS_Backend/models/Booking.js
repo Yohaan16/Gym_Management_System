@@ -47,8 +47,6 @@ class BookingModel {
   }
 
   // ===================== JOIN WAITLIST =====================
-  // Inserts a booking with status 'Waiting'. The payment_intent_id is stored
-  // in the payment table separately via PaymentService.recordWaitlistPayment.
 
   static async joinWaitlist({ member_id, class_id, booking_date, booking_time, paymentIntentId = null }) {
     const connection = await db.getConnection();

@@ -73,39 +73,6 @@ class WaitlistService {
 
   static async _recordPromotedPayment(entry) {
     const PaymentModel = require('../models/Payment');
-    // Assume amount is fixed or retrieved; for now, use a placeholder or query class price
-    // Since we don't have amount here, need to get it from class or something.
-    // For simplicity, assume amount is known, or add to entry.
-    // In getNextWaiting, we can add price from class.
-    // But to keep simple, let's add price to the select.
-
-    // Update getNextWaiting to include price
-    // But for now, hardcode or assume.
-
-    // Actually, since it's waitlist, the amount was passed when joining, but not stored.
-    // Perhaps store amount in booking or get from class.
-
-    // To fix, let's modify getNextWaiting to join class and get price.
-
-    // But for now, since the original had amount in recordWaitlistPayment, but now we need it.
-
-    // Perhaps pass amount in the flow.
-
-    // For simplicity, let's assume amount is 400 or get from class.
-
-    // Let's update getNextWaiting to include c.price
-
-    // Then use entry.price
-
-    // Yes.
-
-    // First, update getNextWaiting.
-
-    // In Booking.js, add c.price AS class_price
-
-    // Then in WaitlistService, use entry.class_price
-
-    // Yes.
 
     await PaymentModel.recordPayment({
       paymentSource: 'booking',

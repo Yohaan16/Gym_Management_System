@@ -25,10 +25,10 @@ class GoalModel {
     }
   }
 
-  static async getGoal(member_id) {
+  static async getGoal(member_id, goal_type = 'weight_loss') {
     const goals = await db.query(
-      'SELECT goal_id, goal_type, target_value FROM goal WHERE member_id = ?',
-      [member_id]
+      'SELECT goal_id, goal_type, target_value FROM goal WHERE member_id = ? AND goal_type = ?',
+      [member_id, goal_type]
     );
     return goals.length > 0 ? goals[0] : null;
   }

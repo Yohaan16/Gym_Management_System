@@ -92,7 +92,8 @@ router.post('/goal', async (req, res) => {
 router.get('/goal/:memberId', async (req, res) => {
   try {
     const { memberId } = req.params;
-    const goal = await GoalModel.getGoal(parseInt(memberId));
+    const { goalType } = req.query;
+    const goal = await GoalModel.getGoal(parseInt(memberId), goalType || 'weight_loss');
     res.json(goal || { message: 'No goal set' });
   } catch (error) {
     res.status(500).json({ error: error.message });
