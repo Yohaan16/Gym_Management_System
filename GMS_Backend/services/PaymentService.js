@@ -22,6 +22,7 @@ class PaymentService {
         description,
         capture_method: captureMethod,
       });
+      console.log('Created payment intent:', intent.id, 'client_secret present:', !!intent.client_secret);
       return { clientSecret: intent.client_secret, paymentIntentId: intent.id };
     } catch (stripeError) {
       if (stripeError.type === 'StripeInvalidRequestError') {
@@ -133,6 +134,14 @@ class PaymentService {
       console.log('Retrieving payment intent...');
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
       console.log('Payment intent retrieved:', paymentIntent.status);
+      console.log('Payment intent details:', {
+        id: paymentIntent.id,
+        status: paymentIntent.status,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        client_secret: paymentIntent.client_secret ? 'present' : 'missing',
+        last_payment_error: paymentIntent.last_payment_error,
+      });
       if (paymentIntent.status !== 'succeeded') {
         throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
       }
