@@ -5,6 +5,7 @@ class BookingModel {
   // ===================== CREATE BOOKING =====================
 
   static async createBooking({ member_id, class_id, booking_date, booking_time, paymentIntentId }) {
+    console.log('createBooking called with:', { member_id, class_id, booking_date, booking_time, paymentIntentId });
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
@@ -18,6 +19,7 @@ class BookingModel {
         throw new Error('Class not found');
       }
       const capacity = classRows[0].capacity;
+      console.log('Class found, capacity:', capacity);
 
       const [countRows] = await connection.execute(
         `SELECT COUNT(*) AS count FROM booking
@@ -25,6 +27,7 @@ class BookingModel {
         [class_id, booking_date, booking_time]
       );
 
+      console.log('Confirmed bookings count:', countRows[0].count);
       if (countRows[0].count >= capacity) {
         await connection.rollback();
         throw new Error('Class is fully booked');
@@ -37,8 +40,10 @@ class BookingModel {
       );
 
       await connection.commit();
+      console.log('Booking inserted, ID:', result.insertId);
       return result.insertId;
     } catch (err) {
+      console.error('Error in createBooking:', err.message);
       try { await connection.rollback(); } catch (e) {}
       throw err;
     } finally {
