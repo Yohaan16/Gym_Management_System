@@ -25,6 +25,7 @@ router.post('/create-class-booking-payment-intent', validateRequired(['amount', 
 // Record booking payment after successful Stripe payment
 router.post('/record-booking-payment', validateRequired(['memberId', 'classId', 'amount']),
   asyncHandler(async (req, res) => {
+    console.log('Route hit: /record-booking-payment', req.body);
     const { memberId, classId, paymentIntentId, amount, paymentMethod = 'Card' } = req.body;
     const result = await PaymentService.recordBookingPayment({
       memberId,

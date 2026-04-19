@@ -53,7 +53,7 @@ app.use('/api/attendance', verifyJWT, attendanceRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
-app.use((err, res) => {
+app.use((err, req, res, next) => {
   console.error('Error caught by error handler:', err);
   handleError(err, res);
 });

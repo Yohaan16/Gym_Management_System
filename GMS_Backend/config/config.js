@@ -7,13 +7,13 @@ module.exports = {
 
   // Database Configuration
   DATABASE: {
-    host: process.env.MYSQLHOST,
-    user: process.env.MYSQLUSER,
-    password: process.env.MYSQLPASSWORD,
-    database: process.env.MYSQLDATABASE,
-    port: parseInt(process.env.MYSQLPORT) || 3306,
+    host: process.env.MYSQLHOST || process.env.DB_HOST,
+    user: process.env.MYSQLUSER || process.env.DB_USER,
+    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD,
+    database: process.env.MYSQLDATABASE || process.env.DB_NAME,
+    port: parseInt(process.env.MYSQLPORT || process.env.DB_PORT) || 3306,
     waitForConnections: true,
-    connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT) || 10,
+    connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || process.env.CONNECTION_LIMIT) || 10,
     queueLimit: 0
   },
 

@@ -14,14 +14,31 @@ class PaymentService {
      STRIPE HELPERS
   ======================= */
   static async createIntent({ amount, metadata, description, captureMethod = 'automatic' }) {
-    const intent = await stripe.paymentIntents.create({
-      amount:         cents(amount),
-      currency:       'mur',
-      metadata,
-      description,
-      capture_method: captureMethod,
-    });
-    return { clientSecret: intent.client_secret, paymentIntentId: intent.id };
+    try {
+      const intent = await stripe.paymentIntents.create({
+        amount:         cents(amount),
+        currency:       'mur',
+        metadata,
+        description,
+        capture_method: captureMethod,
+      });
+      return { clientSecret: intent.client_secret, paymentIntentId: intent.id };
+    } catch (stripeError) {
+      if (stripeError.type === 'StripeInvalidRequestError') {
+        throw new ValidationError(`Invalid payment request: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeAPIError') {
+        throw new ValidationError(`Stripe API error: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeConnectionError') {
+        throw new ValidationError('Payment service temporarily unavailable');
+      }
+      if (stripeError.type === 'StripeAuthenticationError') {
+        throw new ValidationError('Payment service configuration error');
+      }
+      // Re-throw other Stripe errors as operational
+      throw new ValidationError(`Payment creation failed: ${stripeError.message}`);
+    }
   }
 
   /* =======================
@@ -42,13 +59,30 @@ class PaymentService {
     }
 
     if (paymentIntentId) {
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      if (paymentIntent.status !== 'succeeded') {
-        throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
-      }
-      const intendedAmount = Math.round(amount * 100);
-      if (paymentIntent.amount !== intendedAmount) {
-        throw new ValidationError(`Payment amount mismatch.`);
+      try {
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        if (paymentIntent.status !== 'succeeded') {
+          throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
+        }
+        const intendedAmount = Math.round(amount * 100);
+        if (paymentIntent.amount !== intendedAmount) {
+          throw new ValidationError(`Payment amount mismatch. Expected: ${intendedAmount}, Got: ${paymentIntent.amount}`);
+        }
+      } catch (stripeError) {
+        if (stripeError.type === 'StripeInvalidRequestError') {
+          throw new ValidationError(`Invalid payment intent: ${stripeError.message}`);
+        }
+        if (stripeError.type === 'StripeAPIError') {
+          throw new ValidationError(`Stripe API error: ${stripeError.message}`);
+        }
+        if (stripeError.type === 'StripeConnectionError') {
+          throw new ValidationError('Payment service temporarily unavailable');
+        }
+        if (stripeError.type === 'StripeAuthenticationError') {
+          throw new ValidationError('Payment service configuration error');
+        }
+        // Re-throw other Stripe errors as operational
+        throw new ValidationError(`Payment verification failed: ${stripeError.message}`);
       }
     }
 
@@ -93,14 +127,35 @@ class PaymentService {
 
   static async recordBookingPayment({ memberId, classId, amount, paymentMethod = 'Card', paymentIntentId }) {
     required(memberId, classId, amount, paymentIntentId);
+    console.log('recordBookingPayment called with paymentIntentId:', paymentIntentId);
 
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    if (paymentIntent.status !== 'succeeded') {
-      throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
-    }
-    const intendedAmount = Math.round(amount * 100);
-    if (paymentIntent.amount !== intendedAmount) {
-      throw new ValidationError(`Payment amount mismatch.`);
+    try {
+      console.log('Retrieving payment intent...');
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      console.log('Payment intent retrieved:', paymentIntent.status);
+      if (paymentIntent.status !== 'succeeded') {
+        throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
+      }
+      const intendedAmount = Math.round(amount * 100);
+      if (paymentIntent.amount !== intendedAmount) {
+        throw new ValidationError(`Payment amount mismatch. Expected: ${intendedAmount}, Got: ${paymentIntent.amount}`);
+      }
+    } catch (stripeError) {
+      console.log('Stripe error caught:', stripeError.type, stripeError.message, stripeError.constructor.name);
+      if (stripeError.type === 'StripeInvalidRequestError') {
+        throw new ValidationError(`Invalid payment intent: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeAPIError') {
+        throw new ValidationError(`Stripe API error: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeConnectionError') {
+        throw new ValidationError('Payment service temporarily unavailable');
+      }
+      if (stripeError.type === 'StripeAuthenticationError') {
+        throw new ValidationError('Payment service configuration error');
+      }
+      // Re-throw other Stripe errors as operational
+      throw new ValidationError(`Payment verification failed: ${stripeError.message}`);
     }
 
     await PaymentModel.recordPayment({
@@ -167,11 +222,28 @@ class PaymentService {
 
     // Verify the Payment Intent exists and is in requires_capture state
     // (meaning the card was authorised successfully)
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    if (!['requires_capture', 'succeeded'].includes(paymentIntent.status)) {
-      throw new ValidationError(
-        `Waitlist payment authorisation failed. Status: ${paymentIntent.status}`
-      );
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (!['requires_capture', 'succeeded'].includes(paymentIntent.status)) {
+        throw new ValidationError(
+          `Waitlist payment authorisation failed. Status: ${paymentIntent.status}`
+        );
+      }
+    } catch (stripeError) {
+      if (stripeError.type === 'StripeInvalidRequestError') {
+        throw new ValidationError(`Invalid payment intent: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeAPIError') {
+        throw new ValidationError(`Stripe API error: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeConnectionError') {
+        throw new ValidationError('Payment service temporarily unavailable');
+      }
+      if (stripeError.type === 'StripeAuthenticationError') {
+        throw new ValidationError('Payment service configuration error');
+      }
+      // Re-throw other Stripe errors as operational
+      throw new ValidationError(`Payment verification failed: ${stripeError.message}`);
     }
 
     await PaymentModel.recordPayment({
@@ -206,13 +278,30 @@ class PaymentService {
   static async recordMembershipPayment({ memberId, membershipType, paymentIntentId, amount, paymentMethod = 'Card' }) {
     required(memberId, membershipType, paymentIntentId, amount);
 
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    if (paymentIntent.status !== 'succeeded') {
-      throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
-    }
-    const intendedAmount = Math.round(amount * 100);
-    if (paymentIntent.amount !== intendedAmount) {
-      throw new ValidationError(`Payment amount mismatch.`);
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (paymentIntent.status !== 'succeeded') {
+        throw new ValidationError(`Payment not completed. Status: ${paymentIntent.status}`);
+      }
+      const intendedAmount = Math.round(amount * 100);
+      if (paymentIntent.amount !== intendedAmount) {
+        throw new ValidationError(`Payment amount mismatch. Expected: ${intendedAmount}, Got: ${paymentIntent.amount}`);
+      }
+    } catch (stripeError) {
+      if (stripeError.type === 'StripeInvalidRequestError') {
+        throw new ValidationError(`Invalid payment intent: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeAPIError') {
+        throw new ValidationError(`Stripe API error: ${stripeError.message}`);
+      }
+      if (stripeError.type === 'StripeConnectionError') {
+        throw new ValidationError('Payment service temporarily unavailable');
+      }
+      if (stripeError.type === 'StripeAuthenticationError') {
+        throw new ValidationError('Payment service configuration error');
+      }
+      // Re-throw other Stripe errors as operational
+      throw new ValidationError(`Payment verification failed: ${stripeError.message}`);
     }
 
     await PaymentModel.recordPayment({
